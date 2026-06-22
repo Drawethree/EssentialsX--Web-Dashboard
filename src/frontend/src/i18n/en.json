@@ -1,0 +1,54 @@
+{
+  "nav": {
+    "overview": "Overview",
+    "analytics": "Analytics",
+    "management": "Management",
+    "players": "Players",
+    "economy": "Economy",
+    "bansMutes": "Bans & Mutes",
+    "kits": "Kits",
+    "warps": "Warps",
+    "server": "Server",
+    "console": "Live Console",
+    "chat": "Chat Moderation",
+    "serverControls": "Server Controls",
+    "modules": "Modules",
+    "scheduler": "Scheduler",
+    "config": "Config Editor",
+    "tools": "Tools",
+    "admin": "Admin",
+    "staff": "Staff",
+    "moderation": "Moderation",
+    "branding": "Branding",
+    "auditLog": "Audit Log",
+    "help": "Help & Support"
+  },
+  "header": {
+    "search": "Search players, pages…",
+    "notifications": "Notifications",
+    "noNotifications": "No recent notifications.",
+    "viewAll": "View all",
+    "toggleTheme": "Toggle theme",
+    "language": "Language",
+    "signedInAs": "Signed in as",
+    "changeCredentials": "Change Credentials",
+    "security": "Security",
+    "logout": "Logout"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "refresh": "Refresh",
+    "search": "Search",
+    "loading": "Loading…",
+    "apply": "Apply",
+    "add": "Add",
+    "close": "Close",
+    "undo": "Undo"
+  },
+  "demo": {
+    "badge": "Demo mode",
+    "readonly": "read-only"
+  }
+}

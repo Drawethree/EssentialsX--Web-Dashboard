@@ -1,0 +1,54 @@
+{
+  "nav": {
+    "overview": "Resumen",
+    "analytics": "Analíticas",
+    "management": "Gestión",
+    "players": "Jugadores",
+    "economy": "Economía",
+    "bansMutes": "Baneos y silencios",
+    "kits": "Kits",
+    "warps": "Warps",
+    "server": "Servidor",
+    "console": "Consola en vivo",
+    "chat": "Moderación de chat",
+    "serverControls": "Controles del servidor",
+    "modules": "Módulos",
+    "scheduler": "Programador",
+    "config": "Editor de configuración",
+    "tools": "Herramientas",
+    "admin": "Administración",
+    "staff": "Personal",
+    "moderation": "Moderación",
+    "branding": "Marca",
+    "auditLog": "Registro de auditoría",
+    "help": "Ayuda y soporte"
+  },
+  "header": {
+    "search": "Buscar jugadores, páginas…",
+    "notifications": "Notificaciones",
+    "noNotifications": "No hay notificaciones recientes.",
+    "viewAll": "Ver todo",
+    "toggleTheme": "Cambiar tema",
+    "language": "Idioma",
+    "signedInAs": "Conectado como",
+    "changeCredentials": "Cambiar credenciales",
+    "security": "Seguridad",
+    "logout": "Cerrar sesión"
+  },
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "refresh": "Actualizar",
+    "search": "Buscar",
+    "loading": "Cargando…",
+    "apply": "Aplicar",
+    "add": "Añadir",
+    "close": "Cerrar",
+    "undo": "Deshacer"
+  },
+  "demo": {
+    "badge": "Modo demo",
+    "readonly": "solo lectura"
+  }
+}

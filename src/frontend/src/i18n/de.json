@@ -1,0 +1,54 @@
+{
+  "nav": {
+    "overview": "Übersicht",
+    "analytics": "Analysen",
+    "management": "Verwaltung",
+    "players": "Spieler",
+    "economy": "Wirtschaft",
+    "bansMutes": "Banns & Stummschaltungen",
+    "kits": "Kits",
+    "warps": "Warps",
+    "server": "Server",
+    "console": "Live-Konsole",
+    "chat": "Chat-Moderation",
+    "serverControls": "Serversteuerung",
+    "modules": "Module",
+    "scheduler": "Planer",
+    "config": "Konfigurationseditor",
+    "tools": "Werkzeuge",
+    "admin": "Administration",
+    "staff": "Team",
+    "moderation": "Moderation",
+    "branding": "Branding",
+    "auditLog": "Audit-Protokoll",
+    "help": "Hilfe & Support"
+  },
+  "header": {
+    "search": "Spieler, Seiten suchen…",
+    "notifications": "Benachrichtigungen",
+    "noNotifications": "Keine aktuellen Benachrichtigungen.",
+    "viewAll": "Alle anzeigen",
+    "toggleTheme": "Design wechseln",
+    "language": "Sprache",
+    "signedInAs": "Angemeldet als",
+    "changeCredentials": "Zugangsdaten ändern",
+    "security": "Sicherheit",
+    "logout": "Abmelden"
+  },
+  "common": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "refresh": "Aktualisieren",
+    "search": "Suchen",
+    "loading": "Wird geladen…",
+    "apply": "Anwenden",
+    "add": "Hinzufügen",
+    "close": "Schließen",
+    "undo": "Rückgängig"
+  },
+  "demo": {
+    "badge": "Demo-Modus",
+    "readonly": "schreibgeschützt"
+  }
+}

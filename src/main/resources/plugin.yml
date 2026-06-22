@@ -1,0 +1,21 @@
+name: EssDashboard
+main: dev.drawethree.essdash.EssentialsDashboardPlugin
+version: ${project.version}
+api-version: "1.13"
+author: Drawethree
+description: ${project.description}
+depend:
+  - Essentials
+softdepend:
+  - EssentialsXSpawn
+  - EssentialsXChat
+  - Vault
+commands:
+  essdashboard:
+    description: Show the EssentialsX Dashboard URL and status.
+    aliases: [essdash, edash]
+    permission: essdashboard.admin
+permissions:
+  essdashboard.admin:
+    description: Manage the EssentialsX Dashboard.
+    default: op

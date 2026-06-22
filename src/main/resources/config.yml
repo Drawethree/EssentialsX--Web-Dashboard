@@ -1,0 +1,81 @@
+# ────────────────────────────────────────────────────────────────────────────
+#  EssentialsX Dashboard
+#  A web panel for managing your EssentialsX server from the browser.
+# ────────────────────────────────────────────────────────────────────────────
+
+# Port the embedded web server listens on. Open/forward this port to reach the
+# dashboard from outside the machine.
+port: 8095
+
+# Public hostname or IP used when printing the dashboard URL on startup.
+# Leave blank to print <your-server-ip>. Example: panel.myserver.com
+host: ""
+
+# Public address players use to connect to your Minecraft server, shown on the
+# dashboard Overview. Example: play.myserver.com or 1.2.3.4:25565
+# Leave blank to auto-detect from the server's bind IP and port.
+server-address: ""
+
+# The first account created automatically on first start.
+# CHANGE THE PASSWORD here before first launch, or change it in the dashboard
+# afterwards via the user menu → Change Credentials.
+superuser:
+  username: admin
+  password: changeme
+
+jwt:
+  # Leave blank — a strong random secret is generated and saved here on first run.
+  secret: ""
+  # How long a login stays valid, in hours.
+  expiry-hours: 24
+
+cors:
+  # "*" allows any origin (fine for LAN / IP access). To lock the panel to a
+  # single domain, set e.g. https://panel.myserver.com
+  allowed-origins: "*"
+
+security:
+  # Restrict who can reach the dashboard by source IP. Leave the list empty to
+  # allow everyone (the default). Otherwise only the listed addresses/ranges may
+  # connect — everything else gets a 403 and an IP_BLOCKED audit entry.
+  # Accepts exact IPv4/IPv6 addresses and CIDR ranges. Examples:
+  #   allowed-ips:
+  #     - 203.0.113.7          # a single admin machine
+  #     - 10.0.0.0/8           # a private LAN range
+  #     - 2001:db8::/32        # an IPv6 range
+  # NOTE: if the dashboard runs behind a reverse proxy, the source IP is the
+  # proxy's — configure the allowlist at the proxy instead.
+  allowed-ips: []
+
+# Optional read-only demo account (useful for screenshots / showcasing).
+demo:
+  enabled: false
+  username: demo
+  password: demo
+
+console:
+  # Allow running server commands from the web console. Disable to make the
+  # console read-only (chat feed only).
+  allow-commands: true
+  # Commands that may never be run from the web console (matched on the first
+  # word, case-insensitive, with any "namespace:" prefix stripped — so
+  # minecraft:stop also matches stop). Also enforced on scheduled command tasks.
+  # Blocked attempts are still recorded in the audit log.
+  blocked-commands:
+    - stop
+    - restart
+    - op
+    - deop
+
+# Forward important staff/server actions to a Discord channel via webhook.
+notifications:
+  # Paste a Discord webhook URL to enable. Leave blank to disable notifications.
+  webhook-url: ""
+  # Which audited actions trigger a notification. Defaults below if left empty.
+  events:
+    - BAN
+    - UNBAN
+    - KICK
+    - MUTE
+    - LOGIN_FAIL
+    - SERVER_STOP

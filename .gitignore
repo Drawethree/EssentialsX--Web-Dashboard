@@ -1,0 +1,7 @@
+target/
+node/
+src/frontend/node_modules/
+src/frontend/dist/
+*.iml
+.idea/
+CHANGELOG.md

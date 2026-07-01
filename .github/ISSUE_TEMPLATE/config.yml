@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 Documentation & setup guides
+    url: https://github.com/Drawethree/EssentialsX--Web-Dashboard/wiki
+    about: Installation, configuration, features, and troubleshooting live in the Wiki.
+  - name: 💬 Questions & discussions
+    url: https://github.com/Drawethree/EssentialsX--Web-Dashboard/discussions
+    about: Ask questions, share setups, and get help from the community.
+  - name: 🔒 Report a security vulnerability
+    url: https://github.com/Drawethree/EssentialsX--Web-Dashboard/security/advisories/new
+    about: Please report security issues privately, not as public issues.

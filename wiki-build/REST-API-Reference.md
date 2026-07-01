@@ -55,13 +55,17 @@ Every response carries `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY
 | GET | `/health` | public | Liveness probe |
 | GET | `/api/server/overview` | session | Players, TPS, memory, versions, online list |
 | GET | `/api/meta/materials` | session | Material list for item pickers |
-| GET | `/api/analytics/history` | session | Trend samples (`range=1h\|24h\|7d`) |
+| GET | `/api/meta/enchantments` | session | Enchantment list (with max levels) for the item editor |
+| GET | `/api/analytics/history` | session | Trend samples (`range=1h\|24h\|7d\|30d`) |
+| GET | `/api/analytics/activity-heatmap` | session | Login counts by weekday/hour (optional `?uuid=`) |
+| GET | `/api/analytics/geo-distribution` | session | Player counts by country (needs EssentialsXGeoIP) |
 
 ## Players
 
 | Method | Path | Permission |
 |---|---|---|
 | GET | `/api/players` | `PLAYERS_VIEW` |
+| POST | `/api/players/bulk` | per-action | Bulk action across selected players |
 | GET | `/api/players/{uuid}` | `PLAYERS_VIEW` |
 | PUT | `/api/players/{uuid}/money` | `PLAYERS_MANAGE` |
 | PUT | `/api/players/{uuid}/nickname` | `PLAYERS_MANAGE` |
@@ -92,7 +96,9 @@ Every response carries `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY
 | GET | `/api/economy/stats` | `ECONOMY_VIEW` |
 | GET | `/api/economy/insights` | `ECONOMY_VIEW` |
 | GET | `/api/economy/transactions` | `ECONOMY_LOG_VIEW` |
+| GET | `/api/economy/debts` | `ECONOMY_VIEW` |
 | POST | `/api/economy/bulk` | `ECONOMY_MANAGE` |
+| POST | `/api/economy/reset-debts` | `ECONOMY_MANAGE` |
 
 ## Moderation
 

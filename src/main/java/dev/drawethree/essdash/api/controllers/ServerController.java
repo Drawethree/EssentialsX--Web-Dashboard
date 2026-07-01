@@ -44,6 +44,24 @@ public class ServerController {
         ctx.json(names);
     }
 
+    /** GET /api/meta/enchantments — every enchantment {id, name, maxLevel} for the item editor. */
+    public void enchantments(Context ctx) {
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (org.bukkit.enchantments.Enchantment ench : org.bukkit.enchantments.Enchantment.values()) {
+            if (ench == null) continue;
+            Map<String, Object> e = new LinkedHashMap<>();
+            String id;
+            try { id = ench.getKey().getKey(); } catch (Throwable t) { id = ench.getName().toLowerCase(Locale.ROOT); }
+            e.put("id", id);
+            String name = id.replace('_', ' ');
+            e.put("name", name.substring(0, 1).toUpperCase(Locale.ROOT) + name.substring(1));
+            try { e.put("maxLevel", ench.getMaxLevel()); } catch (Throwable ignored) { e.put("maxLevel", 1); }
+            list.add(e);
+        }
+        list.sort((a, b) -> String.valueOf(a.get("name")).compareToIgnoreCase(String.valueOf(b.get("name"))));
+        ctx.json(list);
+    }
+
     /** GET /api/server/overview */
     public void overview(Context ctx) {
         Map<String, Object> result = new LinkedHashMap<>();

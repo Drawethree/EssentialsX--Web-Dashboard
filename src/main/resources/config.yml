@@ -47,6 +47,17 @@ security:
   # proxy's — configure the allowlist at the proxy instead.
   allowed-ips: []
 
+  # Minimum length for new/changed dashboard account passwords (floor of 6).
+  min-password-length: 10
+
+  # Per-account brute-force lockout. After `max-attempts` failed logins for the
+  # same username within `window-minutes`, that account is temporarily locked
+  # (HTTP 429) regardless of source IP. This complements the per-IP login limiter.
+  # Set max-attempts to 0 to disable per-account lockout.
+  account-lockout:
+    max-attempts: 10
+    window-minutes: 15
+
 # Optional read-only demo account (useful for screenshots / showcasing).
 demo:
   enabled: false

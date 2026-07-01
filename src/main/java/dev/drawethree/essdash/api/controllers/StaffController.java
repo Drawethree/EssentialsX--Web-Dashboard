@@ -1,5 +1,6 @@
 package dev.drawethree.essdash.api.controllers;
 
+import dev.drawethree.essdash.DashboardConfig;
 import dev.drawethree.essdash.auth.AuditLog;
 import dev.drawethree.essdash.auth.Permission;
 import dev.drawethree.essdash.auth.PermissionGuard;
@@ -19,10 +20,12 @@ public class StaffController {
 
     private final AddonDatabase db;
     private final AuditLog auditLog;
+    private final DashboardConfig config;
 
-    public StaffController(AddonDatabase db, AuditLog auditLog) {
+    public StaffController(AddonDatabase db, AuditLog auditLog, DashboardConfig config) {
         this.db = db;
         this.auditLog = auditLog;
+        this.config = config;
     }
 
     /** GET /api/staff — admin-only, except a read-only DEMO viewer may browse the accounts list
@@ -45,8 +48,9 @@ public class StaffController {
     public void create(Context ctx) {
         PermissionGuard.requireAdmin(ctx);
         var body = ctx.bodyAsClass(StaffRequest.class);
-        if (body.username() == null || body.username().isBlank() || body.password() == null || body.password().length() < 6) {
-            ctx.status(400).json(Map.of("error", "username and a password of at least 6 characters are required"));
+        int minLen = config.getMinPasswordLength();
+        if (body.username() == null || body.username().isBlank() || body.password() == null || body.password().length() < minLen) {
+            ctx.status(400).json(Map.of("error", "username and a password of at least " + minLen + " characters are required"));
             return;
         }
         if (db.usernameExists(body.username())) {

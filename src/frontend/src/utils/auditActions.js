@@ -8,7 +8,7 @@ const NEUTRAL = 'bg-brand-subtle text-brand'
 
 // Destructive or security-negative events.
 const RED_ACTIONS = new Set([
-  'BAN', 'KICK', 'SERVER_STOP', 'LOGIN_FAIL', 'LOGIN_2FA_FAIL', 'CONSOLE', 'CONSOLE_BLOCKED',
+  'BAN', 'KICK', 'SERVER_STOP', 'LOGIN_FAIL', 'LOGIN_2FA_FAIL', 'LOGIN_LOCKED', 'CONSOLE', 'CONSOLE_BLOCKED',
   '2FA_DISABLE', 'STAFF_DELETE', 'SESSION_REVOKE_ADMIN',
 ])
 
@@ -29,6 +29,7 @@ const GREEN_ACTIONS = new Set([
 const LABEL_OVERRIDES = {
   LOGIN_FAIL: 'Login Failed',
   LOGIN_2FA_FAIL: '2FA Failed',
+  LOGIN_LOCKED: 'Account Locked',
   DEMO_LOGIN: 'Demo Login',
   '2FA_ENABLE': '2FA Enabled',
   '2FA_DISABLE': '2FA Disabled',
@@ -55,7 +56,7 @@ const LABEL_OVERRIDES = {
 
 // Actions worth surfacing in the in-app notification bell (security/moderation-relevant).
 const NOTABLE_ACTIONS = new Set([
-  'BAN', 'UNBAN', 'KICK', 'MUTE', 'UNMUTE', 'SERVER_STOP', 'LOGIN_FAIL', 'LOGIN_2FA_FAIL',
+  'BAN', 'UNBAN', 'KICK', 'MUTE', 'UNMUTE', 'SERVER_STOP', 'LOGIN_FAIL', 'LOGIN_2FA_FAIL', 'LOGIN_LOCKED',
   'CONSOLE_BLOCKED', '2FA_DISABLE', 'STAFF_CREATE', 'STAFF_DELETE', 'SESSION_REVOKE_ADMIN',
 ])
 

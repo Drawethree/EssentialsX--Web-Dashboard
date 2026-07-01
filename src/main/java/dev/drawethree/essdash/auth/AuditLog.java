@@ -61,7 +61,14 @@ public class AuditLog {
         } catch (IOException e) {
             logger.warning("Failed to write audit log: " + e.getMessage());
         }
-        if (notifier != null) notifier.maybeNotify(username, action, details);
+        // Strip the machine-readable "  item=<json>" token (used only for the UI hover preview)
+        // so webhook notifications stay human-readable.
+        String notifyDetails = details;
+        if (details != null) {
+            int itemIdx = details.indexOf("  item=");
+            if (itemIdx >= 0) notifyDetails = details.substring(0, itemIdx);
+        }
+        if (notifier != null) notifier.maybeNotify(username, action, notifyDetails);
     }
 
     /**

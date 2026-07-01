@@ -23,6 +23,7 @@ public class AnalyticsController {
     public void history(Context ctx) {
         String range = ctx.queryParamAsClass("range", String.class).getOrDefault("24h");
         long window = switch (range) {
+            case "30d" -> 30L * 24 * 3_600_000L;
             case "7d" -> 7L * 24 * 3_600_000L;
             case "1h" -> 3_600_000L;
             default -> 24L * 3_600_000L;
@@ -30,5 +31,15 @@ public class AnalyticsController {
         long since = System.currentTimeMillis() - window;
         List<Map<String, Object>> samples = db.recentMetrics(since);
         ctx.json(Map.of("range", range, "samples", samples));
+    }
+
+    /**
+     * GET /api/analytics/activity-heatmap?uuid= — login counts bucketed by weekday/hour for the
+     * activity heatmap. Without {@code uuid} the whole server is aggregated; with it, a single
+     * player. Read-only, same access level as the trend history.
+     */
+    public void activityHeatmap(Context ctx) {
+        String uuid = ctx.queryParamAsClass("uuid", String.class).getOrDefault("");
+        ctx.json(Map.of("buckets", db.activityHeatmap(uuid)));
     }
 }

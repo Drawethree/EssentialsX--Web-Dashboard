@@ -6,9 +6,11 @@
 - [[Building from Source|Building-from-Source]]
 - [[Configuration|Configuration]]
 - [[First Login & Security|First-Login-and-Security]]
+- [[Reverse Proxy & HTTPS|Reverse-Proxy-and-HTTPS]]
 
 **Features**
-- [[Dashboard & Analytics|Dashboard-Overview-and-Analytics]]
+- [[Dashboard & Overview|Dashboard-Overview-and-Analytics]]
+- [[Analytics & Heatmaps|Analytics-and-Heatmaps]]
 - [[Players|Players]]
 - [[Economy|Economy]]
 - [[Bans, Mutes & Warnings|Bans-Mutes-and-Warnings]]
@@ -24,6 +26,7 @@
 - [[Staff & Permissions|Staff-Accounts-and-Permissions]]
 - [[Branding|Branding]]
 - [[Audit Log|Audit-Log]]
+- [[Data, Backups & Recovery|Data-Backups-and-Recovery]]
 
 **Reference**
 - [[REST API Reference|REST-API-Reference]]

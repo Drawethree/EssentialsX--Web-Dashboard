@@ -1,9 +1,24 @@
 <template>
   <div class="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
-    <PageHeader title="Overview" description="Live snapshot of your server." />
+    <div class="flex items-start justify-between gap-3">
+      <PageHeader title="Overview" description="Live snapshot of your server." />
+      <button class="btn-ghost text-xs flex-shrink-0" @click="customizing = !customizing">
+        <AdjustmentsHorizontalIcon class="w-4 h-4" /> Customize
+      </button>
+    </div>
+
+    <!-- Customize panel — toggle which widgets appear (saved per account). -->
+    <div v-if="customizing" class="card flex flex-wrap items-center gap-x-5 gap-y-2">
+      <span class="text-xs uppercase tracking-wide text-muted">Show widgets:</span>
+      <label v-for="w in widgetDefs" :key="w.key" class="flex items-center gap-1.5 text-sm text-secondary cursor-pointer">
+        <input type="checkbox" v-model="widgets[w.key]" />
+        {{ w.label }}
+      </label>
+      <button class="btn-ghost text-xs ml-auto" @click="resetWidgets">Reset</button>
+    </div>
 
     <!-- Stat cards -->
-    <div v-if="data" class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div v-if="widgets.stats && data" class="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="card">
         <div class="flex items-center gap-3">
           <span class="w-10 h-10 rounded-lg bg-brand-subtle text-brand flex items-center justify-center flex-shrink-0"><UsersIcon class="w-5 h-5" /></span>
@@ -45,12 +60,12 @@
         <Sparkline v-if="economySeries.length > 1" :values="economySeries" :width="240" :height="32" class="w-full mt-3" color="rgb(34 197 94)" />
       </div>
     </div>
-    <div v-else class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div v-else-if="widgets.stats" class="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <Skeleton v-for="i in 4" :key="i" height="4.75rem" rounded="rounded-xl" />
     </div>
 
     <!-- Quick actions -->
-    <div class="flex flex-wrap gap-2">
+    <div v-if="widgets.actions" class="flex flex-wrap gap-2">
       <router-link v-if="hasPerm('PLAYERS_VIEW')" to="/players" class="btn-subtle"><UsersIcon class="w-4 h-4" /> Players</router-link>
       <router-link v-if="hasPerm('CONSOLE_VIEW')" to="/console" class="btn-subtle"><CommandLineIcon class="w-4 h-4" /> Console</router-link>
       <router-link v-if="hasPerm('ECONOMY_VIEW')" to="/economy" class="btn-subtle"><BanknotesIcon class="w-4 h-4" /> Economy</router-link>
@@ -58,7 +73,7 @@
     </div>
 
     <div v-if="data" class="grid lg:grid-cols-3 gap-4">
-      <div class="card lg:col-span-2">
+      <div v-if="widgets.online" class="card lg:col-span-2">
         <div class="flex items-center justify-between mb-3">
           <h3>Online Players</h3>
           <span class="badge-online">{{ onlineList.length }} online</span>
@@ -77,7 +92,7 @@
       </div>
 
       <div class="space-y-4">
-        <div class="card">
+        <div v-if="widgets.server" class="card">
           <h3 class="mb-3">Server</h3>
           <dl class="space-y-2 text-sm">
             <div v-if="data.serverAddress" class="flex justify-between items-center gap-2">
@@ -96,7 +111,7 @@
           </dl>
         </div>
 
-        <div v-if="hasPerm('AUDIT_LOG')" class="card">
+        <div v-if="hasPerm('AUDIT_LOG') && widgets.activity" class="card">
           <div class="flex items-center justify-between mb-3">
             <h3>Recent Activity</h3>
             <router-link to="/audit-log" class="text-xs text-brand hover:underline">View all</router-link>
@@ -121,7 +136,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { api, openEventStream } from '../api'
 import { uptime, timeAgo, formatDateTime } from '../utils'
 import { auditLabel, auditBadgeClass } from '../utils/auditActions'
@@ -134,12 +149,31 @@ import Skeleton from '../components/ui/Skeleton.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
 import {
   UsersIcon, BoltIcon, CircleStackIcon, GlobeAltIcon, CommandLineIcon, BanknotesIcon, MegaphoneIcon,
-  ClipboardDocumentIcon,
+  ClipboardDocumentIcon, AdjustmentsHorizontalIcon,
 } from '@heroicons/vue/24/outline'
 
 const auth = useAuthStore()
 const hasPerm = p => auth.hasPermission(p)
 const copy = useClipboard()
+
+// ── Customizable widgets (show/hide, persisted per account) ──────────────────
+const widgetDefs = [
+  { key: 'stats', label: 'Stat cards' },
+  { key: 'actions', label: 'Quick actions' },
+  { key: 'online', label: 'Online players' },
+  { key: 'server', label: 'Server info' },
+  { key: 'activity', label: 'Recent activity' },
+]
+const storageKey = `essdash_overview_widgets_${auth.username || 'anon'}`
+const defaults = () => Object.fromEntries(widgetDefs.map(w => [w.key, true]))
+const widgets = reactive({ ...defaults(), ...loadWidgets() })
+const customizing = ref(false)
+
+function loadWidgets() {
+  try { return JSON.parse(localStorage.getItem(storageKey)) || {} } catch { return {} }
+}
+function resetWidgets() { Object.assign(widgets, defaults()) }
+watch(widgets, () => localStorage.setItem(storageKey, JSON.stringify(widgets)), { deep: true })
 
 const data = ref(null)
 const onlineList = ref([])

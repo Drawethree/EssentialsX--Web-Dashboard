@@ -55,7 +55,16 @@
             <td class="px-4 py-2 whitespace-nowrap">
               <span class="badge" :class="auditBadgeClass(e.action)">{{ auditLabel(e.action) }}</span>
             </td>
-            <td class="px-4 py-2 text-secondary break-words font-mono text-xs">{{ e.details || '—' }}</td>
+            <td class="px-4 py-2 text-secondary break-words font-mono text-xs">
+              <span
+                v-if="e.item"
+                class="underline decoration-dotted underline-offset-2 cursor-help"
+                @mouseenter="ev => showTip(e.item, ev)"
+                @mousemove="moveTip"
+                @mouseleave="hideTip"
+              >{{ e.details || prettyMaterial(e.item) }}</span>
+              <template v-else>{{ e.details || '—' }}</template>
+            </td>
             <td class="px-4 py-2 text-muted font-mono text-xs whitespace-nowrap hidden sm:table-cell">{{ e.ip || '—' }}</td>
           </tr>
         </tbody>
@@ -72,11 +81,18 @@
     </div>
 
     <Pagination :page="page" :size="size" :total="total" @update:page="p => { page = p; load() }" />
+
+    <!-- Floating item preview for item-related audit entries -->
+    <teleport to="body">
+      <div v-if="tip.item" ref="tipEl" class="fixed z-[100]" :style="{ left: tip.left + 'px', top: tip.top + 'px' }">
+        <ItemTooltip :item="tip.item" />
+      </div>
+    </teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { api } from '../api'
 import { useToastStore } from '../stores/toast'
 import { exportCsv } from '../utils/csv'
@@ -85,6 +101,7 @@ import { auditBadgeClass, auditLabel } from '../utils/auditActions'
 import Pagination from '../components/Pagination.vue'
 import Select from '../components/ui/Select.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
+import ItemTooltip from '../components/ItemTooltip.vue'
 import { MagnifyingGlassIcon, ClipboardDocumentListIcon } from '@heroicons/vue/24/outline'
 
 const toast = useToastStore()
@@ -94,10 +111,44 @@ const size = 50
 const total = ref(0)
 const loading = ref(true)
 const q = ref('')
-const action = ref('')
+// reka-ui SelectItem cannot use an empty string value, so the "no filter" choice
+// uses an 'all' sentinel that maps back to '' when calling the API.
+const action = ref('all')
 const actions = ref([])
+const actionFilter = computed(() => (action.value === 'all' ? '' : action.value))
 const exporting = ref(false)
 let searchTimer = null
+
+// ── Floating item tooltip (for item-related entries) ─────────────────────────
+const tip = reactive({ item: null, left: 0, top: 0 })
+const tipEl = ref(null)
+let lastMouse = { x: 0, y: 0 }
+
+function placeTip() {
+  const pad = 14
+  const w = tipEl.value?.offsetWidth || 240
+  const h = tipEl.value?.offsetHeight || 160
+  let left = lastMouse.x + pad
+  let top = lastMouse.y + pad
+  if (left + w > window.innerWidth - 8) left = lastMouse.x - w - pad
+  if (top + h > window.innerHeight - 8) top = Math.max(8, window.innerHeight - h - 8)
+  tip.left = Math.max(8, left)
+  tip.top = top
+}
+function showTip(item, ev) {
+  tip.item = item
+  lastMouse = { x: ev.clientX, y: ev.clientY }
+  nextTick(placeTip)
+}
+function moveTip(ev) {
+  lastMouse = { x: ev.clientX, y: ev.clientY }
+  if (tip.item) placeTip()
+}
+function hideTip() { tip.item = null }
+
+function prettyMaterial(item) {
+  return String(item?.material || '').toLowerCase().replace(/_/g, ' ')
+}
 
 // The backend appends the client IP to the details as a trailing "  ip=<ip>" token.
 // Split it back out into its own field for display/export.
@@ -105,23 +156,36 @@ function splitIp(details) {
   const m = (details || '').match(/^(.*?)\s+ip=(\S+)\s*$/s)
   return m ? { details: m[1], ip: m[2] } : { details: details || '', ip: '' }
 }
-const rows = computed(() => entries.value.map(e => ({ ...e, ...splitIp(e.details) })))
 
-const isFiltered = computed(() => !!q.value.trim() || !!action.value)
+// Item-related actions append the full item as "  item=<json>" so the visible details stay short
+// while a hover can render the full item tooltip. Split it back out (after the IP is removed).
+function splitItem(details) {
+  const m = (details || '').match(/^([\s\S]*?)\s+item=(\{[\s\S]*\})\s*$/)
+  if (!m) return { details: details || '', item: null }
+  try { return { details: m[1], item: JSON.parse(m[2]) } } catch { return { details: details || '', item: null } }
+}
+
+const rows = computed(() => entries.value.map(e => {
+  const { details: noIp, ip } = splitIp(e.details)
+  const { details, item } = splitItem(noIp)
+  return { ...e, details, ip, item }
+}))
+
+const isFiltered = computed(() => !!q.value.trim() || !!actionFilter.value)
 const actionOptions = computed(() => [
-  { value: '', label: 'All actions' },
+  { value: 'all', label: 'All actions' },
   ...actions.value.map(a => ({ value: a, label: auditLabel(a) })),
 ])
 
 async function load() {
   loading.value = true
   try {
-    const { data } = await api.auditLog(page.value, size, q.value.trim(), action.value)
+    const { data } = await api.auditLog(page.value, size, q.value.trim(), actionFilter.value)
     entries.value = data.entries
     total.value = data.total
     // The action list spans the whole file regardless of filter — only refresh when not filtering
     // so the dropdown keeps every option available.
-    if (data.actions && !action.value) actions.value = data.actions
+    if (data.actions && !actionFilter.value) actions.value = data.actions
   } catch { /* ignore */ } finally { loading.value = false }
 }
 
@@ -144,7 +208,8 @@ const CSV_COLUMNS = [
 ]
 
 function toRow(e) {
-  const { details, ip } = splitIp(e.details)
+  const { details: noIp, ip } = splitIp(e.details)
+  const { details } = splitItem(noIp)
   return {
     time: formatDateTime(e.timestamp),
     user: e.user,
@@ -167,7 +232,7 @@ async function exportAll() {
     const pageSize = 500
     const all = []
     for (let p = 0; ; p++) {
-      const { data } = await api.auditLog(p, pageSize, q.value.trim(), action.value)
+      const { data } = await api.auditLog(p, pageSize, q.value.trim(), actionFilter.value)
       all.push(...data.entries)
       if (all.length >= data.total || data.entries.length === 0) break
     }

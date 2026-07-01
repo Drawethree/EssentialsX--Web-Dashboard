@@ -1,0 +1,47 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "wiki-build/**"
+      - "**/*.md"
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      # Cache the Node/npm that frontend-maven-plugin downloads into target/node,
+      # plus the frontend's node_modules, to speed up repeat builds.
+      - name: Cache frontend toolchain
+        uses: actions/cache@v4
+        with:
+          path: |
+            target/node
+            src/frontend/node_modules
+          key: frontend-${{ runner.os }}-${{ hashFiles('src/frontend/package-lock.json') }}
+          restore-keys: |
+            frontend-${{ runner.os }}-
+
+      - name: Build (Java + frontend, shaded JAR)
+        run: mvn -B clean package
+
+      - name: Upload plugin JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: EssentialsX-Dashboard
+          path: target/EssentialsX-Dashboard-*.jar
+          if-no-files-found: error

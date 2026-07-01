@@ -20,6 +20,9 @@ players who aren't currently connected.
 A tabbed profile with the player's avatar, status badges (online/offline, banned, muted, OP) and
 copy-to-clipboard for UUID and IP.
 
+> 📸 **Screenshot:** _A player profile — identity header, tabs, and the inventory editor._
+> _(See [how to add screenshots](Images).)_
+
 | Tab | What you can do |
 |---|---|
 | **Overview** | View nickname, last login, world, gamemode, IP and GeoIP location; add/delete **staff notes**. |

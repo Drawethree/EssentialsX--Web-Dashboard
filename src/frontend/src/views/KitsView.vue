@@ -1,11 +1,11 @@
 <template>
   <div class="p-4 sm:p-6 max-w-5xl mx-auto space-y-5">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h1>Kits</h1>
         <p class="text-sm text-muted">Create and edit EssentialsX kits. Saved kits reload instantly.</p>
       </div>
-      <button v-if="can('KITS_MANAGE')" class="btn-primary" @click="openNew">New Kit</button>
+      <button v-if="can('KITS_MANAGE')" class="btn-primary flex-shrink-0" @click="openNew">New Kit</button>
     </div>
 
     <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">

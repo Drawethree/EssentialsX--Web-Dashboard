@@ -57,7 +57,9 @@ Full steps: **[[Installation|Installation]]**.
 | Build the jar yourself | [[Building from Source|Building-from-Source]] |
 | Tune ports, CORS, demo mode, webhooks | [[Configuration|Configuration]] |
 | Secure the panel (password, 2FA, sessions) | [[First Login & Security|First-Login-and-Security]] |
+| Put it behind HTTPS for public access | [[Reverse Proxy & HTTPS|Reverse-Proxy-and-HTTPS]] |
 | Add staff with limited access | [[Staff & Permissions|Staff-Accounts-and-Permissions]] |
+| Back up data / recover a lockout | [[Data, Backups & Recovery|Data-Backups-and-Recovery]] |
 | Explore a specific feature | See the **Features** section in the sidebar |
 | Integrate with the HTTP API | [[REST API Reference|REST-API-Reference]] |
 | Fix a problem | [[Troubleshooting & FAQ|Troubleshooting-and-FAQ]] |

@@ -12,8 +12,13 @@ Server-wide money management backed by EssentialsX (and Vault, if installed).
 - **Baltop** — paginated leaderboard of the richest players, with **CSV export**.
 - **Bulk give / take** — add or remove money from **all** players or only **online** players in one
   action. Every bulk change is audited.
+- **Debts** — list players carrying a **negative balance**, and **reset all debts to zero** in one
+  click when you need to wipe the slate.
 - **Money-supply insights** — a supply trend chart over time plus **top earners** and **top spenders**
   for the selected range (e.g. 24h / 7d / 30d).
+
+> 📸 **Screenshot:** _The Economy page — stats, baltop leaderboard and bulk tools._
+> _(See [how to add screenshots](Images).)_
 
 ## Transaction ledger
 

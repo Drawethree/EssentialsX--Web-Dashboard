@@ -20,7 +20,7 @@ public class MetricsSampler {
     /** How often a sample is taken. */
     private static final long INTERVAL_TICKS = 5 * 60 * 20L; // 5 minutes
     /** How long samples are retained before pruning. */
-    private static final long RETENTION_MS = 7L * 24 * 3_600_000L;
+    private static final long RETENTION_MS = 30L * 24 * 3_600_000L;
 
     private final JavaPlugin plugin;
     private final AddonDatabase db;
@@ -53,6 +53,14 @@ public class MetricsSampler {
         Runtime rt = Runtime.getRuntime();
         long memoryUsedMb = (rt.totalMemory() - rt.freeMemory()) / 1_048_576;
 
+        // Loaded chunks and entities across all worlds — cheap main-thread reads, useful load signals.
+        int loadedChunks = 0, entities = 0;
+        for (org.bukkit.World w : Bukkit.getWorlds()) {
+            loadedChunks += w.getLoadedChunks().length;
+            entities += w.getEntities().size();
+        }
+        final int chunksF = loadedChunks, entitiesF = entities;
+
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             String total = null;
             try {
@@ -61,7 +69,7 @@ public class MetricsSampler {
             } catch (Exception e) {
                 plugin.getLogger().fine("Metrics economy scan skipped: " + e.getMessage());
             }
-            db.insertMetric(ts, online, total, tps, memoryUsedMb);
+            db.insertMetric(ts, online, total, tps, memoryUsedMb, chunksF, entitiesF);
             db.pruneMetrics(ts - RETENTION_MS);
         });
     }

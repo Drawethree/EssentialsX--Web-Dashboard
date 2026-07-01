@@ -68,18 +68,22 @@ public class InventoryController {
         ctx.json(result);
     }
 
-    /** PUT /api/players/{uuid}/inventory/{slot} — {material, amount} */
+    /** PUT /api/players/{uuid}/inventory/{slot} — full item spec (see {@link ItemSpec}). */
     public void set(Context ctx) {
         Player player = online(ctx);
         if (player == null) return;
-        var body = ctx.bodyAsClass(SlotRequest.class);
-        Material material = Material.matchMaterial(body.material() == null ? "" : body.material());
-        if (material == null || !material.isItem()) { ctx.status(400).json(Map.of("error", "Unknown item: " + body.material())); return; }
-        int amount = Math.max(1, Math.min(body.amount(), material.getMaxStackSize()));
-        if (!applySlot(player, ctx.pathParam("slot"), new ItemStack(material, amount))) {
+        var body = ctx.bodyAsClass(ItemSpec.class);
+        Material material = body.resolveMaterial();
+        if (material == null) { ctx.status(400).json(Map.of("error", "Unknown item: " + body.material())); return; }
+
+        ItemStack stack = body.toItemStack(material, material.getMaxStackSize());
+        if (!applySlot(player, ctx.pathParam("slot"), stack)) {
             ctx.status(400).json(Map.of("error", "Invalid slot")); return;
         }
-        audit(ctx, "INV_SET", player.getName() + " " + ctx.pathParam("slot") + "=" + material + " x" + amount);
+        String detail = player.getName() + " " + ctx.pathParam("slot") + " = " + body.auditSummary(material, stack.getAmount());
+        String json = body.auditDetail(material, stack.getAmount());
+        if (!json.isEmpty()) detail += "  item=" + json;
+        audit(ctx, "INV_SET", detail);
         ctx.json(Map.of("ok", true));
     }
 
@@ -182,12 +186,86 @@ public class InventoryController {
         if (meta instanceof org.bukkit.inventory.meta.SkullMeta skull && skull.getOwningPlayer() != null) {
             slot.put("skullOwner", skull.getOwningPlayer().getName());
         }
+
+        describeExtras(slot, meta);
+
+        // Raw item NBT / data-component string (Paper 1.20.5+). Lets staff inspect the full tag set.
+        try {
+            String nbt = meta.getAsString();
+            if (nbt != null && !nbt.isBlank() && !"[]".equals(nbt.trim())) slot.put("nbt", nbt);
+        } catch (Throwable ignored) {}
+    }
+
+    /** Best-effort extra metadata (potions, attributes, trim, food). Each block is isolated so
+     *  a missing API on an older server can't break the whole serialisation. */
+    private void describeExtras(Map<String, Object> slot, org.bukkit.inventory.meta.ItemMeta meta) {
+        // Potion effects (potions, tipped arrows, lingering/splash potions).
+        try {
+            if (meta instanceof org.bukkit.inventory.meta.PotionMeta pm) {
+                Map<String, Object> potion = new LinkedHashMap<>();
+                try {
+                    org.bukkit.potion.PotionType base = pm.getBasePotionType();
+                    if (base != null) potion.put("base", prettify(base.name()));
+                } catch (Throwable ignored) {}
+                if (pm.hasColor() && pm.getColor() != null) potion.put("color", String.format("#%06X", pm.getColor().asRGB()));
+                List<Map<String, Object>> effects = new ArrayList<>();
+                for (org.bukkit.potion.PotionEffect eff : pm.getCustomEffects()) {
+                    Map<String, Object> e = new LinkedHashMap<>();
+                    e.put("name", prettify(eff.getType().getName()));
+                    e.put("amplifier", eff.getAmplifier());
+                    e.put("duration", eff.getDuration());
+                    effects.add(e);
+                }
+                if (!effects.isEmpty()) potion.put("effects", effects);
+                if (!potion.isEmpty()) slot.put("potion", potion);
+            }
+        } catch (Throwable ignored) {}
+
+        // Attribute modifiers.
+        try {
+            if (meta.hasAttributeModifiers() && meta.getAttributeModifiers() != null) {
+                List<Map<String, Object>> attrs = new ArrayList<>();
+                meta.getAttributeModifiers().forEach((attribute, modifier) -> {
+                    Map<String, Object> a = new LinkedHashMap<>();
+                    a.put("attribute", prettify(attribute.name().replace("GENERIC_", "")));
+                    a.put("amount", modifier.getAmount());
+                    a.put("operation", prettify(modifier.getOperation().name()));
+                    try { if (modifier.getSlotGroup() != null) a.put("slot", prettify(modifier.getSlotGroup().toString())); } catch (Throwable ignored) {}
+                    attrs.add(a);
+                });
+                if (!attrs.isEmpty()) slot.put("attributes", attrs);
+            }
+        } catch (Throwable ignored) {}
+
+        // Armor trim (1.20+).
+        try {
+            if (meta instanceof org.bukkit.inventory.meta.ArmorMeta am && am.hasTrim()) {
+                org.bukkit.inventory.meta.trim.ArmorTrim trim = am.getTrim();
+                Map<String, Object> t = new LinkedHashMap<>();
+                t.put("material", prettify(trim.getMaterial().getKey().getKey()));
+                t.put("pattern", prettify(trim.getPattern().getKey().getKey()));
+                slot.put("trim", t);
+            }
+        } catch (Throwable ignored) {}
+
+        // Food / consumable component (1.20.5+).
+        try {
+            if (meta.hasFood()) {
+                org.bukkit.inventory.meta.components.FoodComponent food = meta.getFood();
+                Map<String, Object> f = new LinkedHashMap<>();
+                f.put("nutrition", food.getNutrition());
+                f.put("saturation", food.getSaturation());
+                f.put("canAlwaysEat", food.canAlwaysEat());
+                slot.put("food", f);
+            }
+        } catch (Throwable ignored) {}
     }
 
     private Map<String, Object> enchant(org.bukkit.enchantments.Enchantment ench, int level) {
         Map<String, Object> e = new LinkedHashMap<>();
         String key;
         try { key = ench.getKey().getKey(); } catch (Throwable t) { key = ench.getName(); }
+        e.put("id", key);
         e.put("name", prettify(key));
         e.put("level", level);
         return e;
@@ -212,5 +290,4 @@ public class InventoryController {
         auditLog.log(username, action, details);
     }
 
-    public record SlotRequest(String material, int amount) {}
 }

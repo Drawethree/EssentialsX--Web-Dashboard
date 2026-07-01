@@ -1,5 +1,6 @@
 package dev.drawethree.essdash.api.controllers;
 
+import dev.drawethree.essdash.db.AddonDatabase;
 import dev.drawethree.essdash.essentials.EssentialsService;
 import dev.drawethree.essdash.essentials.GeoIpService;
 import dev.drawethree.essdash.util.Redaction;
@@ -7,7 +8,10 @@ import io.javalin.http.Context;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -16,10 +20,12 @@ public class GeoIpController {
 
     private final EssentialsService essentials;
     private final GeoIpService geoip;
+    private final AddonDatabase db;
 
-    public GeoIpController(EssentialsService essentials, GeoIpService geoip) {
+    public GeoIpController(EssentialsService essentials, GeoIpService geoip, AddonDatabase db) {
         this.essentials = essentials;
         this.geoip = geoip;
+        this.db = db;
     }
 
     public void get(Context ctx) {
@@ -39,5 +45,41 @@ public class GeoIpController {
         result.putAll(geoip.lookup(ip));
         result.put("ip", Redaction.isDemo(ctx) ? Redaction.maskIp(ip) : ip);
         ctx.json(result);
+    }
+
+    /**
+     * GET /api/analytics/geo-distribution — player/login counts grouped by country, derived from the
+     * login history. Each distinct IP is geo-resolved once. Country-level only (no IPs returned), so
+     * it's safe to show even to demo accounts. Players-per-country is approximate (a player connecting
+     * from two IPs in the same country counts once per IP).
+     */
+    public void distribution(Context ctx) {
+        Map<String, long[]> byCountry = new LinkedHashMap<>(); // code -> {players, logins}
+        Map<String, String> countryNames = new LinkedHashMap<>();
+        for (Map<String, Object> row : db.loginIpStats()) {
+            String ip = (String) row.get("ip");
+            long players = ((Number) row.get("players")).longValue();
+            long logins = ((Number) row.get("logins")).longValue();
+            Map<String, Object> geo = geoip.lookup(ip);
+            String code = (String) geo.getOrDefault("countryCode", "??");
+            String name = (String) geo.getOrDefault("country", "Unknown / Local");
+            if (code == null) code = "??";
+            long[] acc = byCountry.computeIfAbsent(code, k -> new long[2]);
+            acc[0] += players;
+            acc[1] += logins;
+            countryNames.putIfAbsent(code, name);
+        }
+
+        List<Map<String, Object>> countries = new ArrayList<>();
+        for (Map.Entry<String, long[]> e : byCountry.entrySet()) {
+            Map<String, Object> c = new LinkedHashMap<>();
+            c.put("countryCode", e.getKey());
+            c.put("country", countryNames.get(e.getKey()));
+            c.put("players", e.getValue()[0]);
+            c.put("logins", e.getValue()[1]);
+            countries.add(c);
+        }
+        countries.sort(Comparator.comparingLong((Map<String, Object> c) -> (Long) c.get("players")).reversed());
+        ctx.json(Map.of("geoipInstalled", geoip.available(), "countries", countries));
     }
 }

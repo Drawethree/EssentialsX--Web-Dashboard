@@ -30,6 +30,9 @@ public class AuthController {
 
     private final ConcurrentHashMap<String, RateLimitEntry> rateLimits = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, RateLimitEntry> totpLimits = new ConcurrentHashMap<>();
+    // Per-account lockout (keyed by lower-cased username) — complements the per-IP limiter above so
+    // a single username can't be ground down from rotating/distributed IPs.
+    private final ConcurrentHashMap<String, RateLimitEntry> accountLimits = new ConcurrentHashMap<>();
 
     public AuthController(AddonDatabase db, JwtService jwt, AuditLog auditLog, DashboardConfig config) {
         this.db = db;
@@ -57,16 +60,39 @@ public class AuthController {
         }
 
         var body = ctx.bodyAsClass(LoginRequest.class);
+        String accountKey = body.username() == null ? "" : body.username().trim().toLowerCase();
+
+        // Per-account lockout: reject before checking the password if this username is locked out.
+        int maxAccountFailures = config.getAccountLockoutMaxAttempts();
+        if (maxAccountFailures > 0) {
+            long windowMs = config.getAccountLockoutWindowMs();
+            RateLimitEntry acct = accountLimits.compute(accountKey, (k, e) ->
+                    (e == null || System.currentTimeMillis() - e.windowStart > windowMs)
+                            ? new RateLimitEntry(0, System.currentTimeMillis()) : e);
+            if (acct.failures >= maxAccountFailures) {
+                long retryAfter = windowMs - (System.currentTimeMillis() - acct.windowStart);
+                ctx.header("Retry-After", String.valueOf(retryAfter / 1000 + 1));
+                auditLog.log(body.username(), "LOGIN_LOCKED", "ip=" + ip);
+                ctx.status(429).json(Map.of("error", "This account is temporarily locked due to repeated failed logins."));
+                return;
+            }
+        }
+
         String hash = db.getPasswordHash(body.username());
         if (hash == null || !JwtService.checkPassword(body.password(), hash)) {
             rateLimits.merge(ip, new RateLimitEntry(entry.failures + 1, entry.windowStart),
                     (existing, inc) -> new RateLimitEntry(existing.failures + 1, existing.windowStart));
+            if (maxAccountFailures > 0) {
+                accountLimits.merge(accountKey, new RateLimitEntry(1, System.currentTimeMillis()),
+                        (existing, inc) -> new RateLimitEntry(existing.failures + 1, existing.windowStart));
+            }
             auditLog.log(body.username(), "LOGIN_FAIL", "ip=" + ip);
             ctx.status(401).json(Map.of("error", "Invalid username or password"));
             return;
         }
 
         rateLimits.remove(ip);
+        accountLimits.remove(accountKey);
 
         // Password is correct. If the account has 2FA, hand back a short-lived challenge token instead.
         if (db.isTotpEnabled(body.username())) {

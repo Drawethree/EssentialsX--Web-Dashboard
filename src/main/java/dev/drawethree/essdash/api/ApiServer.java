@@ -88,7 +88,7 @@ public class ApiServer {
 
         this.jwtMiddleware = new JwtMiddleware(jwt, db);
         this.auth = new AuthController(db, jwt, auditLog, cfg);
-        this.account = new AccountController(db, jwt, auditLog);
+        this.account = new AccountController(db, jwt, auditLog, cfg);
         this.sessions = new SessionController(db, auditLog);
         this.twoFactor = new TwoFactorController(db, auditLog);
         this.scheduledTasks = new ScheduledTasksController(db, schedulerService, auditLog, cfg);
@@ -101,10 +101,10 @@ public class ApiServer {
         this.warps = new WarpsController(warpService, essentials, auditLog);
         this.console = new ConsoleController(essentials, cfg, auditLog);
         this.config = new ConfigController(essentials, auditLog, logger);
-        this.staff = new StaffController(db, auditLog);
+        this.staff = new StaffController(db, auditLog, cfg);
         this.admin = new AdminController(essentials, auditLog);
         this.inventory = new InventoryController(essentials, auditLog);
-        this.geoip = new GeoIpController(essentials, geoIpService);
+        this.geoip = new GeoIpController(essentials, geoIpService, db);
         this.serverAdmin = new ServerAdminController(essentials, auditLog);
         this.modules = new ModulesController(essentials, auditLog);
         this.discord = new DiscordController(auditLog);
@@ -139,7 +139,7 @@ public class ApiServer {
             // 'unsafe-inline' for styles is needed for Vue's inline :style bindings.
             ctx.header("Content-Security-Policy",
                     "default-src 'self'; "
-                    + "img-src 'self' data: https://mc-heads.net https://minotar.net https://crafatar.com https://assets.mcasset.cloud; "
+                    + "img-src 'self' data: https://mc-heads.net https://minotar.net https://crafatar.com https://mc.nerothe.com https://assets.mcasset.cloud; "
                     + "style-src 'self' 'unsafe-inline'; "
                     + "script-src 'self'; "
                     + "font-src 'self'; "
@@ -207,9 +207,11 @@ public class ApiServer {
         // ── Server overview ──
         app.get("/api/server/overview", server::overview);
         app.get("/api/meta/materials", server::materials);
+        app.get("/api/meta/enchantments", server::enchantments);
 
         // ── Players ──
         app.get("/api/players", players::search);
+        app.post("/api/players/bulk", players::bulk);
         app.get("/api/players/{uuid}", players::get);
         app.put("/api/players/{uuid}/money", players::setMoney);
         app.put("/api/players/{uuid}/nickname", players::setNickname);
@@ -243,6 +245,8 @@ public class ApiServer {
 
         // ── Analytics (trend history; any authenticated user, like the overview) ──
         app.get("/api/analytics/history", analytics::history);
+        app.get("/api/analytics/activity-heatmap", analytics::activityHeatmap);
+        app.get("/api/analytics/geo-distribution", geoip::distribution);
 
         // ── Chat moderation ──
         app.get("/api/chat", chat::list);

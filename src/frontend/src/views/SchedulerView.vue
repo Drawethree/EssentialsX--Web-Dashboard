@@ -1,11 +1,11 @@
 <template>
   <div class="p-4 sm:p-6 max-w-5xl mx-auto space-y-5">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h1>Scheduled Tasks</h1>
         <p class="text-sm text-muted">Automate broadcasts, commands, mass mail, and timed restarts.</p>
       </div>
-      <button v-if="canManage" class="btn-primary" @click="openNew">New Task</button>
+      <button v-if="canManage" class="btn-primary flex-shrink-0" @click="openNew">New Task</button>
     </div>
 
     <div class="card p-0 overflow-x-auto">

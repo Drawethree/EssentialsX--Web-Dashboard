@@ -108,6 +108,13 @@ public class EconomyController {
 
         boolean onlineOnly = "online".equalsIgnoreCase(body.target());
         int affected = essentials.bulkAdjust(body.action(), body.amount(), onlineOnly);
+
+        // An "online" bulk with nobody online is a no-op — don't record a phantom audit/ledger entry.
+        if (onlineOnly && affected == 0) {
+            ctx.status(409).json(Map.of("error", "No players are currently online"));
+            return;
+        }
+
         invalidate();
 
         String username = ctx.attribute("username") != null ? ctx.attribute("username") : "unknown";

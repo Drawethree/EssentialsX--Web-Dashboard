@@ -329,28 +329,11 @@
       </template>
     </Modal>
 
-    <Modal :open="giveModal" title="Give Item" @close="giveModal = false">
-      <label class="label">Item</label>
-      <MaterialInput v-model="giveForm.material" class="mb-3" />
-      <label class="label">Amount</label>
-      <input v-model.number="giveForm.amount" type="number" min="1" class="input" />
-      <template #footer>
-        <Button variant="ghost" @click="giveModal = false">Cancel</Button>
-        <Button @click="doGive">Give</Button>
-      </template>
-    </Modal>
+    <ItemEditModal :open="giveModal" title="Give Item" save-label="Give" :show-clear="false"
+                   :amount-max="2304" :source="{}" @close="giveModal = false" @save="doGive" />
 
-    <Modal :open="slotModal" :title="`Edit slot ${slotForm.id}`" @close="slotModal = false">
-      <label class="label">Item — blank to clear</label>
-      <MaterialInput v-model="slotForm.material" placeholder="golden_apple" class="mb-3" />
-      <label class="label">Amount</label>
-      <input v-model.number="slotForm.amount" type="number" min="1" class="input" />
-      <template #footer>
-        <Button variant="ghost" @click="slotModal = false">Cancel</Button>
-        <Button variant="danger" class="mr-auto" @click="clearSlotItem">Clear</Button>
-        <Button @click="saveSlot">Save</Button>
-      </template>
-    </Modal>
+    <ItemEditModal :open="slotModal" :slot-id="slotId" :source="slotSource"
+                   @close="slotModal = false" @save="saveSlot" @clear="clearSlotItem" />
   </div>
 </template>
 
@@ -367,7 +350,7 @@ import { formatMoney, timeAgo, formatDateTime } from '../utils'
 import { useClipboard } from '../composables/useClipboard'
 import Modal from '../components/Modal.vue'
 import Avatar from '../components/Avatar.vue'
-import MaterialInput from '../components/MaterialInput.vue'
+import ItemEditModal from '../components/ItemEditModal.vue'
 import PunishmentTemplatePicker from '../components/PunishmentTemplatePicker.vue'
 import InventoryGrid from '../components/InventoryGrid.vue'
 import Pagination from '../components/Pagination.vue'
@@ -391,9 +374,9 @@ const tab = ref('overview')
 const busy = ref({ nickname: false, money: false })
 
 const giveModal = ref(false)
-const giveForm = ref({ material: '', amount: 1 })
 const slotModal = ref(false)
-const slotForm = ref({ id: '', container: '', index: 0, material: '', amount: 1 })
+const slotId = ref('')
+const slotSource = ref({})
 
 const moneyAmount = ref(null)
 const moneyAction = ref('give')
@@ -552,26 +535,26 @@ function setGamemode(v) {
   if (v) guarded(() => api.setGamemode(uuid, v), 'Gamemode changed')
 }
 
-function doGive() {
-  if (!giveForm.value.material.trim()) return toast.error('Enter an item')
-  guarded(() => api.giveItem(uuid, giveForm.value.material.trim(), giveForm.value.amount || 1), 'Item given')
+function doGive(payload) {
+  guarded(() => api.giveItem(uuid, payload), 'Item given')
   giveModal.value = false
 }
 
 function openSlot({ container, index }) {
-  slotForm.value = { id: `${container}-${index}`, container, index, material: '', amount: 1 }
+  const arr = inv.value?.[container] || []
+  slotSource.value = arr.find(s => s.index === index) || { index }
+  slotId.value = `${container}-${index}`
   slotModal.value = true
 }
-async function saveSlot() {
-  if (!slotForm.value.material.trim()) return clearSlotItem()
+async function saveSlot(payload) {
   try {
-    await api.setSlot(uuid, slotForm.value.id, slotForm.value.material.trim(), slotForm.value.amount || 1)
+    await api.setSlot(uuid, slotId.value, payload)
     toast.success('Slot updated'); slotModal.value = false; loadInventory()
   } catch (err) { toast.error(err.response?.data?.error ?? 'Failed') }
 }
 async function clearSlotItem() {
   try {
-    await api.clearSlot(uuid, slotForm.value.id)
+    await api.clearSlot(uuid, slotId.value)
     toast.success('Slot cleared'); slotModal.value = false; loadInventory()
   } catch (err) { toast.error(err.response?.data?.error ?? 'Failed') }
 }

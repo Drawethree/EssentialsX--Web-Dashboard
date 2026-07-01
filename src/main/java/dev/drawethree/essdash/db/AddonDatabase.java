@@ -174,6 +174,9 @@ public class AddonDatabase {
             addColumnIfMissing(stmt, "users", "must_change_password INTEGER NOT NULL DEFAULT 0");
             addColumnIfMissing(stmt, "users", "totp_secret TEXT");
             addColumnIfMissing(stmt, "users", "totp_enabled INTEGER NOT NULL DEFAULT 0");
+            // Extra metric columns added after the initial release (NULL for older samples).
+            addColumnIfMissing(stmt, "metrics_history", "loaded_chunks INTEGER");
+            addColumnIfMissing(stmt, "metrics_history", "entities INTEGER");
         }
     }
 
@@ -238,6 +241,78 @@ public class AddonDatabase {
             logger.warning("Failed to count players: " + e.getMessage());
         }
         return 0;
+    }
+
+    /**
+     * Filter the player index by name, an optional uuid allow/deny set (used for the online/offline
+     * status filter, which the DB can't know on its own), a minimum last-seen cutoff, and sort order.
+     * {@code includeUuids} (non-null) restricts to those uuids; {@code excludeUuids} (non-null) removes
+     * them. {@code sortByName} sorts A→Z, otherwise most-recently-seen first.
+     */
+    public record PlayerFilter(String query, Set<String> includeUuids, Set<String> excludeUuids,
+                               long minLastSeen, boolean sortByName) {}
+
+    public List<Map<String, Object>> searchPlayersFiltered(PlayerFilter f, int limit, int offset) {
+        StringBuilder sql = new StringBuilder("SELECT uuid, name, last_seen FROM player_index ");
+        List<Object> args = buildFilter(sql, f);
+        sql.append(f.sortByName() ? " ORDER BY name COLLATE NOCASE ASC" : " ORDER BY last_seen DESC");
+        sql.append(" LIMIT ? OFFSET ?");
+        args.add(limit); args.add(offset);
+
+        List<Map<String, Object>> results = new ArrayList<>();
+        try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
+            for (int i = 0; i < args.size(); i++) ps.setObject(i + 1, args.get(i));
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("uuid", rs.getString("uuid"));
+                    row.put("name", rs.getString("name"));
+                    row.put("lastSeen", rs.getLong("last_seen"));
+                    results.add(row);
+                }
+            }
+        } catch (SQLException e) {
+            logger.warning("Failed to search players (filtered): " + e.getMessage());
+        }
+        return results;
+    }
+
+    public int countPlayersFiltered(PlayerFilter f) {
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM player_index ");
+        List<Object> args = buildFilter(sql, f);
+        try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
+            for (int i = 0; i < args.size(); i++) ps.setObject(i + 1, args.get(i));
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            logger.warning("Failed to count players (filtered): " + e.getMessage());
+        }
+        return 0;
+    }
+
+    /** Appends the shared WHERE clause for the filtered queries and returns its bind args. */
+    private List<Object> buildFilter(StringBuilder sql, PlayerFilter f) {
+        List<Object> args = new ArrayList<>();
+        List<String> clauses = new ArrayList<>();
+        clauses.add("name LIKE ?");
+        args.add("%" + (f.query() == null ? "" : f.query()) + "%");
+        if (f.minLastSeen() > 0) { clauses.add("last_seen >= ?"); args.add(f.minLastSeen()); }
+        if (f.includeUuids() != null) {
+            clauses.add("uuid IN (" + placeholders(f.includeUuids().size()) + ")");
+            args.addAll(f.includeUuids());
+        }
+        if (f.excludeUuids() != null && !f.excludeUuids().isEmpty()) {
+            clauses.add("uuid NOT IN (" + placeholders(f.excludeUuids().size()) + ")");
+            args.addAll(f.excludeUuids());
+        }
+        sql.append("WHERE ").append(String.join(" AND ", clauses));
+        return args;
+    }
+
+    private static String placeholders(int n) {
+        if (n == 0) return "NULL"; // "uuid IN (NULL)" matches nothing — safe for an empty include set
+        return String.join(",", Collections.nCopies(n, "?"));
     }
 
     public record PlayerIndexEntry(UUID uuid, String name, long lastSeen) {}
@@ -709,6 +784,57 @@ public class AddonDatabase {
         return results;
     }
 
+    /** Login counts bucketed by weekday (0=Sunday … 6=Saturday) and hour (0–23) in the server's
+     *  local time, for the activity heatmap. {@code uuid} is an optional filter (blank = server-wide).
+     *  Returns one row per non-empty bucket: {weekday, hour, count}. */
+    public List<Map<String, Object>> activityHeatmap(String uuid) {
+        StringBuilder sql = new StringBuilder(
+                "SELECT CAST(strftime('%w', ts/1000, 'unixepoch', 'localtime') AS INTEGER) AS weekday, "
+              + "CAST(strftime('%H', ts/1000, 'unixepoch', 'localtime') AS INTEGER) AS hour, "
+              + "COUNT(*) AS cnt FROM player_logins");
+        List<Object> args = new ArrayList<>();
+        if (uuid != null && !uuid.isBlank()) { sql.append(" WHERE uuid = ?"); args.add(uuid); }
+        sql.append(" GROUP BY weekday, hour");
+
+        List<Map<String, Object>> results = new ArrayList<>();
+        try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
+            for (int i = 0; i < args.size(); i++) ps.setObject(i + 1, args.get(i));
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("weekday", rs.getInt("weekday"));
+                    row.put("hour", rs.getInt("hour"));
+                    row.put("count", rs.getInt("cnt"));
+                    results.add(row);
+                }
+            }
+        } catch (SQLException e) {
+            logger.warning("Failed to compute activity heatmap: " + e.getMessage());
+        }
+        return results;
+    }
+
+    /** Distinct login IPs with the number of distinct players and total logins from each. Backs the
+     *  GeoIP world map: each IP is geo-resolved once, then tallied into its country. */
+    public List<Map<String, Object>> loginIpStats() {
+        String sql = "SELECT ip, COUNT(DISTINCT uuid) AS players, COUNT(*) AS logins "
+                + "FROM player_logins WHERE ip IS NOT NULL AND ip <> '' GROUP BY ip";
+        List<Map<String, Object>> results = new ArrayList<>();
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("ip", rs.getString("ip"));
+                row.put("players", rs.getInt("players"));
+                row.put("logins", rs.getInt("logins"));
+                results.add(row);
+            }
+        } catch (SQLException e) {
+            logger.warning("Failed to read login IP stats: " + e.getMessage());
+        }
+        return results;
+    }
+
     // ── Economy ledger ──────────────────────────────────────────────────────────
 
     public void insertEconomyLog(UUID uuid, String name, String delta, String balance, String source, String staff, long ts) {
@@ -778,7 +904,9 @@ public class AddonDatabase {
      *  Used for top earners (positive) / spenders (negative). */
     public List<Map<String, Object>> economyMovers(long sinceTs, boolean topEarners, int limit) {
         String sql = "SELECT uuid, name, SUM(CAST(delta AS REAL)) AS net FROM economy_log "
-                + "WHERE ts >= ? AND delta IS NOT NULL GROUP BY uuid "
+                + "WHERE ts >= ? AND delta IS NOT NULL "
+                + "AND uuid <> '00000000-0000-0000-0000-000000000000' "  // skip bulk / debt-reset summary rows
+                + "GROUP BY uuid "
                 + "ORDER BY net " + (topEarners ? "DESC" : "ASC") + " LIMIT ?";
         List<Map<String, Object>> results = new ArrayList<>();
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -810,14 +938,19 @@ public class AddonDatabase {
 
     // ── Metrics history ─────────────────────────────────────────────────────────
 
-    public void insertMetric(long ts, int online, String totalEconomy, Double tps, long memoryUsedMb) {
-        String sql = "INSERT OR REPLACE INTO metrics_history (ts, online, total_economy, tps, memory_used_mb) VALUES (?, ?, ?, ?, ?)";
+    public void insertMetric(long ts, int online, String totalEconomy, Double tps, long memoryUsedMb,
+                             int loadedChunks, int entities) {
+        String sql = "INSERT OR REPLACE INTO metrics_history "
+                + "(ts, online, total_economy, tps, memory_used_mb, loaded_chunks, entities) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setLong(1, ts);
             ps.setInt(2, online);
             ps.setString(3, totalEconomy);
             if (tps == null) ps.setNull(4, Types.REAL); else ps.setDouble(4, tps);
             ps.setLong(5, memoryUsedMb);
+            ps.setInt(6, loadedChunks);
+            ps.setInt(7, entities);
             ps.executeUpdate();
         } catch (SQLException e) {
             logger.warning("Failed to insert metric: " + e.getMessage());
@@ -825,7 +958,8 @@ public class AddonDatabase {
     }
 
     public List<Map<String, Object>> recentMetrics(long sinceTs) {
-        String sql = "SELECT ts, online, total_economy, tps, memory_used_mb FROM metrics_history WHERE ts >= ? ORDER BY ts ASC";
+        String sql = "SELECT ts, online, total_economy, tps, memory_used_mb, loaded_chunks, entities "
+                + "FROM metrics_history WHERE ts >= ? ORDER BY ts ASC";
         List<Map<String, Object>> results = new ArrayList<>();
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setLong(1, sinceTs);
@@ -838,6 +972,10 @@ public class AddonDatabase {
                     double tps = rs.getDouble("tps");
                     row.put("tps", rs.wasNull() ? null : tps);
                     row.put("memoryUsedMb", rs.getLong("memory_used_mb"));
+                    int chunks = rs.getInt("loaded_chunks");
+                    row.put("loadedChunks", rs.wasNull() ? null : chunks);
+                    int entities = rs.getInt("entities");
+                    row.put("entities", rs.wasNull() ? null : entities);
                     results.add(row);
                 }
             }

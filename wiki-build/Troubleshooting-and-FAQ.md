@@ -85,7 +85,8 @@ warning it won't affect functionality.
 
 Put the dashboard behind a reverse proxy that terminates TLS (nginx, Caddy, Traefik) and forwards to
 `127.0.0.1:8095`, lock `cors.allowed-origins` to your panel domain, change the admin password, and
-enable [[2FA|First-Login-and-Security]]. Don't expose plain HTTP. See the hardening section of
+enable [[2FA|First-Login-and-Security]]. Don't expose plain HTTP. Full copy-paste configs are in
+**[[Reverse Proxy & HTTPS|Reverse-Proxy-and-HTTPS]]**; see also the hardening section of
 [[Configuration|Configuration]].
 
 ## Where is my data stored?
@@ -97,6 +98,9 @@ In `plugins/EssDashboard/`:
 | `config.yml` | Settings (incl. generated `jwt.secret`) |
 | `dashboard.db` | SQLite DB: staff accounts, sessions, player index, punishments, notes, login history, economy & chat logs, metrics, scheduled tasks, branding/moderation settings |
 | `audit.log` (+ `.1`/`.2`/`.3`) | Rotating audit trail |
+
+For backups, migration, `jwt.secret` rotation and password recovery, see
+[[Data, Backups & Recovery|Data-Backups-and-Recovery]].
 
 ## Still stuck?
 

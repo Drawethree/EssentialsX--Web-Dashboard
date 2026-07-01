@@ -1,5 +1,6 @@
 package dev.drawethree.essdash.api.controllers;
 
+import dev.drawethree.essdash.DashboardConfig;
 import dev.drawethree.essdash.auth.AuditLog;
 import dev.drawethree.essdash.auth.JwtService;
 import dev.drawethree.essdash.db.AddonDatabase;
@@ -13,11 +14,13 @@ public class AccountController {
     private final AddonDatabase db;
     private final JwtService jwt;
     private final AuditLog auditLog;
+    private final DashboardConfig config;
 
-    public AccountController(AddonDatabase db, JwtService jwt, AuditLog auditLog) {
+    public AccountController(AddonDatabase db, JwtService jwt, AuditLog auditLog, DashboardConfig config) {
         this.db = db;
         this.jwt = jwt;
         this.auditLog = auditLog;
+        this.config = config;
     }
 
     /** PUT /api/auth/account — {currentPassword, newUsername?, newPassword?} */
@@ -37,8 +40,9 @@ public class AccountController {
             ctx.status(409).json(Map.of("error", "That username is already taken"));
             return;
         }
-        if (body.newPassword() != null && !body.newPassword().isBlank() && body.newPassword().length() < 6) {
-            ctx.status(400).json(Map.of("error", "New password must be at least 6 characters"));
+        int minLen = config.getMinPasswordLength();
+        if (body.newPassword() != null && !body.newPassword().isBlank() && body.newPassword().length() < minLen) {
+            ctx.status(400).json(Map.of("error", "New password must be at least " + minLen + " characters"));
             return;
         }
 

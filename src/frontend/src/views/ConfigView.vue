@@ -1,11 +1,11 @@
 <template>
   <div class="p-4 sm:p-6 max-w-5xl mx-auto space-y-4 h-full flex flex-col">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h1>Config Editor</h1>
         <p class="text-sm text-muted">Edit the EssentialsX <code class="text-brand">config.yml</code>. Saving reloads Essentials.</p>
       </div>
-      <div class="flex gap-2">
+      <div class="flex gap-2 flex-shrink-0">
         <button class="btn-ghost" @click="load" :disabled="loading">Reload</button>
         <button v-if="can('CONFIG_MANAGE')" class="btn-primary" @click="save" :disabled="saving || !valid">Save</button>
       </div>

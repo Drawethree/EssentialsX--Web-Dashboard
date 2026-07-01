@@ -1,0 +1,53 @@
+name: Publish Wiki
+
+# Sync wiki-build/ into the GitHub Wiki whenever its source changes on main.
+#
+# ONE-TIME SETUP: a GitHub Wiki repo only exists after the first page is created.
+# Before this workflow can push, open the repo's "Wiki" tab and create/save any page
+# once (e.g. "Home"). After that, every change to wiki-build/ auto-publishes.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "wiki-build/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sync wiki-build/ to the GitHub Wiki
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          wiki_url="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git"
+          tmp="$(mktemp -d)"
+
+          if ! git clone --depth 1 "$wiki_url" "$tmp" 2>/dev/null; then
+            echo "::error::Could not clone the wiki repo. Create the first wiki page in the GitHub UI once, then re-run."
+            exit 1
+          fi
+
+          # Replace the wiki contents with wiki-build/ (keep the wiki's .git).
+          find "$tmp" -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+          cp -R wiki-build/. "$tmp"/
+
+          cd "$tmp"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Wiki already up to date — nothing to publish."
+            exit 0
+          fi
+          git commit -m "Sync wiki from ${GITHUB_SHA::7}"
+          git push
+          echo "Wiki published."

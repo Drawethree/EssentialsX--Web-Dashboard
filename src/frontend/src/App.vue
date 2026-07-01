@@ -146,13 +146,11 @@
         </div>
       </header>
 
-      <!-- Demo nudge: read-only notice + links to docs/community, dismissible. -->
+      <!-- Demo nudge: read-only notice + link to the project, dismissible. -->
       <div v-if="auth.isDemo && !demoBannerDismissed" class="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 text-amber-700 dark:text-amber-300 text-sm">
-        <span class="flex-1 min-w-0">
-          You're exploring a read-only demo — most actions are disabled. Read the
-          <a :href="WIKI_URL" target="_blank" rel="noopener noreferrer" class="font-semibold underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-200">Wiki</a>
-          or join our
-          <a :href="DISCORD_URL" target="_blank" rel="noopener noreferrer" class="font-semibold underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-200">Discord</a>.
+        <span class="flex-1 min-w-0 break-words">
+          Read-only demo — get the plugin and docs on GitHub:
+          <a href="https://github.com/Drawethree/EssentialsX--Web-Dashboard" target="_blank" rel="noopener noreferrer" class="font-semibold underline underline-offset-2 break-all hover:text-amber-900 dark:hover:text-amber-200">github.com/Drawethree/EssentialsX--Web-Dashboard</a>
         </span>
         <button class="p-1 rounded hover:bg-amber-500/20 flex-shrink-0" aria-label="Dismiss" @click="dismissDemoBanner">
           <XMarkIcon class="w-4 h-4" />

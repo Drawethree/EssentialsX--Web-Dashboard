@@ -10,6 +10,20 @@
     <packaging>jar</packaging>
     <name>EssentialsX-Dashboard</name>
     <description>Web dashboard for EssentialsX — manage economy, players (online &amp; offline), kits, warps, bans and a live console from the browser.</description>
+    <url>https://github.com/Drawethree/EssentialsX--Web-Dashboard</url>
+
+    <licenses>
+        <license>
+            <name>GNU General Public License v3.0</name>
+            <url>https://www.gnu.org/licenses/gpl-3.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <scm>
+        <connection>scm:git:https://github.com/Drawethree/EssentialsX--Web-Dashboard.git</connection>
+        <url>https://github.com/Drawethree/EssentialsX--Web-Dashboard</url>
+    </scm>
 
     <properties>
         <java.version>17</java.version>

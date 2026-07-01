@@ -4,18 +4,18 @@
 
 @layer base {
   :root {
-    --color-bg-page: #f8fafc;
+    --color-bg-page: #eceff4;
     --color-bg-surface: #ffffff;
-    --color-elevated-rgb: 241 245 249;
+    --color-elevated-rgb: 232 236 242;
     --color-text-primary: #0f172a;
     --color-text-secondary: #475569;
     --color-text-muted: #94a3b8;
     --color-text-faint: #94a3b8;
-    --color-edge-rgb: 226 232 240;
-    --color-border-subtle: #cbd5e1;
+    --color-edge-rgb: 214 221 230;
+    --color-border-subtle: #c4cdd9;
     --color-brand-rgb: 225 60 67;        /* coral-red (matches logo) */
     --color-brand-hover: #c12f36;
-    --color-progress-track: #e2e8f0;
+    --color-progress-track: #dde3ea;
     --color-success-bg: #f0fdf4;
     --color-success-text: #15803d;
     --color-success-border: #86efac;
@@ -26,12 +26,12 @@
     --color-info-text: #334155;
     --color-info-border: #e2e8f0;
 
-    --color-bg-elevated: #f1f5f9;
+    --color-bg-elevated: #e8ecf2;
     --color-bg-overlay: #ffffff;
     --color-brand-subtle: rgba(225, 60, 67, 0.10);
 
-    --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.06);
-    --shadow-md: 0 4px 12px -2px rgba(15, 23, 42, 0.10), 0 2px 6px -2px rgba(15, 23, 42, 0.06);
+    --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.08);
+    --shadow-md: 0 4px 12px -2px rgba(15, 23, 42, 0.12), 0 2px 6px -2px rgba(15, 23, 42, 0.07);
     --shadow-lg: 0 12px 32px -8px rgba(15, 23, 42, 0.18), 0 4px 12px -4px rgba(15, 23, 42, 0.10);
   }
 

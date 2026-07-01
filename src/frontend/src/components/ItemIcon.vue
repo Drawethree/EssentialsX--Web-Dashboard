@@ -21,6 +21,11 @@
 import { ref, computed, watch } from 'vue'
 
 const MC_VERSION = '1.21'
+// Primary: rendered inventory icons (incl. 3D block renders) keyed directly by
+// Bukkit material name — covers every material. 404s on unknown names so the
+// fallback chain below still works.
+const ICONS = `https://mc.nerothe.com/img/${MC_VERSION}`
+// Fallback: raw vanilla textures (only flat faces; misses many blocks).
 const BASE = `https://assets.mcasset.cloud/${MC_VERSION}/assets/minecraft/textures`
 
 const props = defineProps({
@@ -33,8 +38,10 @@ const props = defineProps({
 const name = computed(() => (props.material || '').toLowerCase().replace(/^minecraft:/, ''))
 const pretty = computed(() => name.value.replace(/_/g, ' '))
 
-// Try item texture first, then block texture, then fall back to a text label.
-const sources = computed(() => name.value ? [`${BASE}/item/${name.value}.png`, `${BASE}/block/${name.value}.png`] : [])
+// Try the rendered-icon CDN first, then vanilla item/block textures, then a text label.
+const sources = computed(() => name.value
+  ? [`${ICONS}/minecraft_${name.value}.png`, `${BASE}/item/${name.value}.png`, `${BASE}/block/${name.value}.png`]
+  : [])
 const idx = ref(0)
 const failed = ref(false)
 const src = computed(() => sources.value[idx.value] || '')

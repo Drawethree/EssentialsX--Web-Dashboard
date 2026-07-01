@@ -5,6 +5,9 @@ A real-time view of your server console, right in the browser.
 **Permissions:** `CONSOLE_VIEW` to watch output, `CONSOLE_EXECUTE` to run commands. Command execution
 is also gated by [[Configuration|Configuration]] (`console.allow-commands`).
 
+> 📸 **Screenshot:** _The live console streaming server output with a command input._
+> _(See [how to add screenshots](Images).)_
+
 ## Page (`/console`)
 
 - **Live output** — console lines stream in over the SSE connection as they're logged, shown in a

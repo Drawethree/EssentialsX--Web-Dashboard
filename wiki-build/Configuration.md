@@ -77,7 +77,8 @@ If the panel is reachable from the internet:
 2. **Lock CORS** — set `cors.allowed-origins` to your exact panel domain, not `*`.
 3. **Front it with HTTPS** — run the dashboard behind a reverse proxy (nginx, Caddy, Traefik) that
    terminates TLS and forwards to `127.0.0.1:8095`. Do not expose plain HTTP publicly. (HSTS is sent
-   automatically but only takes effect over HTTPS.)
+   automatically but only takes effect over HTTPS.) Copy-paste configs:
+   **[[Reverse Proxy & HTTPS|Reverse-Proxy-and-HTTPS]]**.
 4. **Restrict the port / source IPs** — only expose `port` to trusted networks where possible, and/or
    use `security.allowed-ips` (or the proxy) to allowlist who can connect.
 5. **Keep `jwt.secret` private** — it signs every session token. Treat the config like a password
@@ -87,5 +88,6 @@ If the panel is reachable from the internet:
 7. **Don't log query strings at the proxy** — the live-console stream authenticates with a `?token=`
    query parameter (the browser cannot send headers for it), so keep it out of access logs.
 
-See also: [[Troubleshooting & FAQ|Troubleshooting-and-FAQ]] for reverse-proxy notes and lost-password
-recovery.
+See also: [[Reverse Proxy & HTTPS|Reverse-Proxy-and-HTTPS]] for full nginx/Caddy/Apache configs,
+[[Data, Backups & Recovery|Data-Backups-and-Recovery]] for backups and password recovery, and
+[[Troubleshooting & FAQ|Troubleshooting-and-FAQ]] for common issues.

@@ -1,11 +1,11 @@
 <template>
   <div class="p-4 sm:p-6 max-w-5xl mx-auto space-y-5">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h1>Staff Accounts</h1>
         <p class="text-sm text-muted">Dashboard logins and their permissions.</p>
       </div>
-      <button class="btn-primary" @click="openNew">New Account</button>
+      <button class="btn-primary flex-shrink-0" @click="openNew">New Account</button>
     </div>
 
     <div class="card p-0 overflow-x-auto">

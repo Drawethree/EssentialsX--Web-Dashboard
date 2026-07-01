@@ -1,0 +1,80 @@
+name: "🐛 Bug report"
+description: Report a problem with EssentialsX Dashboard
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug! Please fill in as much detail as you can.
+        **Do not report security vulnerabilities here** — see [SECURITY.md](../blob/main/SECURITY.md).
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Pre-flight checklist
+      options:
+        - label: I'm running the latest release of EssentialsX Dashboard.
+          required: true
+        - label: I searched existing issues and didn't find a duplicate.
+          required: true
+        - label: This is not a security vulnerability (those go through private reporting).
+          required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug, including what you expected to happen instead.
+      placeholder: When I click "…" the dashboard shows an error and nothing is saved.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Exact steps so we can reproduce the problem.
+      placeholder: |
+        1. Go to '…'
+        2. Click on '…'
+        3. See error
+    validations:
+      required: true
+  - type: input
+    id: dashboard-version
+    attributes:
+      label: Dashboard version
+      placeholder: "1.1.0"
+    validations:
+      required: true
+  - type: input
+    id: server
+    attributes:
+      label: Server software & version
+      placeholder: "Paper 1.21.4"
+    validations:
+      required: true
+  - type: input
+    id: essentialsx-version
+    attributes:
+      label: EssentialsX version
+      placeholder: "2.20.1"
+    validations:
+      required: true
+  - type: input
+    id: java
+    attributes:
+      label: Java version
+      placeholder: "Temurin 17"
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser
+      placeholder: "Firefox 130 / Chrome 129"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs / screenshots
+      description: |
+        Server console output, browser dev-tools console errors, or screenshots.
+        **Redact any tokens, passwords, or the `jwt.secret` before pasting.**
+      render: shell

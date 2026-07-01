@@ -66,10 +66,12 @@ export const api = {
   // Server
   overview: () => http.get('/api/server/overview'),
   materials: () => http.get('/api/meta/materials'),
+  enchantments: () => http.get('/api/meta/enchantments'),
 
   // Players
-  searchPlayers: (q = '', page = 0, size = 20) => http.get('/api/players', { params: { q, page, size } }),
+  searchPlayers: (q = '', page = 0, size = 20, opts = {}) => http.get('/api/players', { params: { q, page, size, ...opts } }),
   getPlayer: uuid => http.get(`/api/players/${uuid}`),
+  playersBulk: payload => http.post('/api/players/bulk', payload),
   setMoney: (uuid, action, amount) => http.put(`/api/players/${uuid}/money`, { action, amount }),
   setNickname: (uuid, nickname) => http.put(`/api/players/${uuid}/nickname`, { nickname }),
   getHomes: uuid => http.get(`/api/players/${uuid}/homes`),
@@ -85,11 +87,11 @@ export const api = {
   message: (uuid, message) => http.post(`/api/players/${uuid}/message`, { message }),
   setGamemode: (uuid, gamemode) => http.put(`/api/players/${uuid}/gamemode`, { gamemode }),
   playerAction: (uuid, action) => http.post(`/api/players/${uuid}/action`, { action }),
-  giveItem: (uuid, material, amount) => http.post(`/api/players/${uuid}/give`, { material, amount }),
+  giveItem: (uuid, item) => http.post(`/api/players/${uuid}/give`, item),
   teleportToPlayer: (uuid, targetUuid) => http.post(`/api/players/${uuid}/teleport`, { targetUuid }),
   setHome: (uuid, data) => http.put(`/api/players/${uuid}/homes`, data),
   getInventory: uuid => http.get(`/api/players/${uuid}/inventory`),
-  setSlot: (uuid, slot, material, amount) => http.put(`/api/players/${uuid}/inventory/${slot}`, { material, amount }),
+  setSlot: (uuid, slot, item) => http.put(`/api/players/${uuid}/inventory/${slot}`, item),
   clearSlot: (uuid, slot) => http.delete(`/api/players/${uuid}/inventory/${slot}`),
   getGeo: uuid => http.get(`/api/players/${uuid}/geo`),
   getPunishments: (uuid, page = 0, size = 20) => http.get(`/api/players/${uuid}/punishments`, { params: { page, size } }),
@@ -102,6 +104,8 @@ export const api = {
 
   // Analytics
   analyticsHistory: (range = '24h') => http.get('/api/analytics/history', { params: { range } }),
+  activityHeatmap: (uuid = '') => http.get('/api/analytics/activity-heatmap', { params: { uuid } }),
+  geoDistribution: () => http.get('/api/analytics/geo-distribution'),
 
   // Economy
   baltop: (page = 0, size = 20) => http.get('/api/economy/baltop', { params: { page, size } }),

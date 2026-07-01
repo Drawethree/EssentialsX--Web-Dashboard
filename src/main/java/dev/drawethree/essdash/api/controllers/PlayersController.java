@@ -36,18 +36,45 @@ public class PlayersController {
         this.logger = logger;
     }
 
-    /** GET /api/players?q=&page=0&size=20 */
+    /**
+     * GET /api/players?q=&page=0&size=20&status=all|online|offline&seen=any|24h|7d|30d&sort=recent|name
+     * Name search plus optional filters. Online/offline is resolved against the live player set
+     * (the index can't know it); last-seen and sort are applied in SQL.
+     */
     public void search(Context ctx) {
         String q = ctx.queryParamAsClass("q", String.class).getOrDefault("");
         int page = ctx.queryParamAsClass("page", Integer.class).getOrDefault(0);
         int size = ctx.queryParamAsClass("size", Integer.class).getOrDefault(20);
         int offset = page * size;
-
-        List<Map<String, Object>> rows = db.searchPlayers(q, size, offset);
-        int total = db.countPlayers(q);
+        String status = ctx.queryParamAsClass("status", String.class).getOrDefault("all");
+        String seen = ctx.queryParamAsClass("seen", String.class).getOrDefault("any");
+        boolean sortByName = "name".equalsIgnoreCase(ctx.queryParamAsClass("sort", String.class).getOrDefault("recent"));
 
         Set<String> onlineUuids = new HashSet<>();
         for (Player p : Bukkit.getOnlinePlayers()) onlineUuids.add(p.getUniqueId().toString());
+
+        long minLastSeen = switch (seen) {
+            case "24h" -> System.currentTimeMillis() - 24L * 3_600_000L;
+            case "7d"  -> System.currentTimeMillis() - 7L * 24 * 3_600_000L;
+            case "30d" -> System.currentTimeMillis() - 30L * 24 * 3_600_000L;
+            default -> 0L;
+        };
+        // Status filter is expressed to the DB as an include (online) or exclude (offline) uuid set.
+        Set<String> include = "online".equalsIgnoreCase(status) ? onlineUuids : null;
+        Set<String> exclude = "offline".equalsIgnoreCase(status) ? onlineUuids : null;
+
+        boolean plain = "all".equalsIgnoreCase(status) && "any".equals(seen) && !sortByName;
+        List<Map<String, Object>> rows;
+        int total;
+        if (plain) {
+            rows = db.searchPlayers(q, size, offset);
+            total = db.countPlayers(q);
+        } else {
+            var filter = new AddonDatabase.PlayerFilter(q, include, exclude, minLastSeen, sortByName);
+            rows = db.searchPlayersFiltered(filter, size, offset);
+            total = db.countPlayersFiltered(filter);
+        }
+
         for (Map<String, Object> row : rows) {
             row.put("online", onlineUuids.contains(row.get("uuid")));
         }
@@ -321,18 +348,21 @@ public class PlayersController {
         ctx.json(result);
     }
 
-    /** POST /api/players/{uuid}/give — {material, amount} (online only) */
+    /** POST /api/players/{uuid}/give — full item spec (see {@link ItemSpec}), online only. */
     public void give(Context ctx) {
         UUID uuid = parseUuid(ctx);
         if (uuid == null) return;
         Player player = Bukkit.getPlayer(uuid);
         if (player == null) { ctx.status(409).json(Map.of("error", "Player must be online to receive items")); return; }
-        var body = ctx.bodyAsClass(GiveRequest.class);
-        Material material = Material.matchMaterial(body.material() == null ? "" : body.material());
-        if (material == null || !material.isItem()) { ctx.status(400).json(Map.of("error", "Unknown item: " + body.material())); return; }
-        int amount = Math.max(1, Math.min(body.amount(), 2304)); // cap at 36 stacks
-        essentials.run(() -> player.getInventory().addItem(new ItemStack(material, amount)));
-        audit(ctx, "GIVE_ITEM", player.getName() + " " + material + " x" + amount);
+        var body = ctx.bodyAsClass(ItemSpec.class);
+        Material material = body.resolveMaterial();
+        if (material == null) { ctx.status(400).json(Map.of("error", "Unknown item: " + body.material())); return; }
+        ItemStack stack = body.toItemStack(material, 2304); // cap at 36 stacks
+        essentials.run(() -> player.getInventory().addItem(stack));
+        String detail = player.getName() + " " + body.auditSummary(material, stack.getAmount());
+        String json = body.auditDetail(material, stack.getAmount());
+        if (!json.isEmpty()) detail += "  item=" + json;
+        audit(ctx, "GIVE_ITEM", detail);
         ctx.json(Map.of("ok", true));
     }
 
@@ -475,6 +505,107 @@ public class PlayersController {
         ctx.json(Map.of("alts", alts));
     }
 
+    /**
+     * POST /api/players/bulk — apply one offline-capable action to many players at once.
+     * Body: {uuids:[…], op:"give_money|take_money|ban|unban|mute|unmute|mail", amount, reason,
+     * durationMinutes, message}. Each player is handled with the same service calls, audit and
+     * ledger/punishment records as the single-player endpoints, so history stays consistent.
+     * The route guard already requires PLAYERS_MANAGE; ban/mute ops additionally need BANS_MANAGE.
+     */
+    public void bulk(Context ctx) {
+        var body = ctx.bodyAsClass(BulkActionRequest.class);
+        String op = body.op() == null ? "" : body.op().toLowerCase(Locale.ROOT);
+        if (body.uuids() == null || body.uuids().isEmpty()) {
+            ctx.status(400).json(Map.of("error", "No players selected"));
+            return;
+        }
+        if (body.uuids().size() > 500) {
+            ctx.status(400).json(Map.of("error", "Too many players selected (max 500)"));
+            return;
+        }
+        // Defence in depth: the path guard grants PLAYERS_MANAGE; punishments need BANS_MANAGE too.
+        if (op.equals("ban") || op.equals("unban") || op.equals("mute") || op.equals("unmute")) {
+            PermissionGuard.require(ctx, Permission.BANS_MANAGE);
+        }
+        boolean isMoney = op.equals("give_money") || op.equals("take_money");
+        if (isMoney && (body.amount() == null || body.amount().signum() <= 0)) {
+            ctx.status(400).json(Map.of("error", "amount must be a positive number"));
+            return;
+        }
+
+        long durationMs = body.durationMinutes() > 0 ? body.durationMinutes() * 60_000L : 0;
+        int affected = 0;
+        List<String> failed = new ArrayList<>();
+        for (String raw : body.uuids()) {
+            UUID uuid;
+            try { uuid = UUID.fromString(raw); }
+            catch (IllegalArgumentException e) { failed.add(raw); continue; }
+            try {
+                if (!applyBulkOp(ctx, op, uuid, body, durationMs)) { failed.add(raw); continue; }
+                affected++;
+            } catch (Exception e) {
+                logger.warning("Bulk op '" + op + "' failed for " + uuid + ": " + e.getMessage());
+                failed.add(raw);
+            }
+        }
+        if (affected == 0 && !failed.isEmpty()) {
+            ctx.status(400).json(Map.of("error", "No players could be processed", "failed", failed));
+            return;
+        }
+        audit(ctx, "BULK_" + op.toUpperCase(Locale.ROOT), "affected=" + affected + " failed=" + failed.size());
+        ctx.json(Map.of("ok", true, "affected", affected, "failed", failed));
+    }
+
+    /** Applies a single bulk op to one player, mirroring the matching single-player endpoint's
+     *  audit + ledger/punishment side effects. Returns false for an unknown op. */
+    private boolean applyBulkOp(Context ctx, String op, UUID uuid, BulkActionRequest body, long durationMs) {
+        String name = resolveName(uuid);
+        switch (op) {
+            case "give_money", "take_money" -> {
+                String action = op.equals("give_money") ? "give" : "take";
+                BigDecimal newBalance = essentials.adjustMoney(uuid, action, body.amount());
+                String delta = (action.equals("give") ? body.amount() : body.amount().negate()).toPlainString();
+                audit(ctx, "SET_MONEY", uuid + " action=" + action + " amount=" + body.amount() + " (bulk)");
+                db.insertEconomyLog(uuid, name, delta,
+                        newBalance == null ? null : newBalance.toPlainString(),
+                        "DASHBOARD_BULK", staff(ctx), System.currentTimeMillis());
+            }
+            case "ban" -> {
+                String reason = orDefault(body.reason(), "Banned by an operator");
+                Date expires = durationMs > 0 ? new Date(System.currentTimeMillis() + durationMs) : null;
+                essentials.run(() -> {
+                    Bukkit.getBanList(BanList.Type.NAME).addBan(name, reason, expires, "Dashboard");
+                    Player online = Bukkit.getPlayer(uuid);
+                    if (online != null) online.kickPlayer(ChatColor.RED + reason);
+                });
+                audit(ctx, "BAN", name + " (" + uuid + ") reason=" + reason + " (bulk)");
+                db.insertPunishment(uuid, name, "BAN", reason, staff(ctx), durationMs);
+            }
+            case "unban" -> {
+                essentials.run(() -> Bukkit.getBanList(BanList.Type.NAME).pardon(name));
+                audit(ctx, "UNBAN", name + " (" + uuid + ") (bulk)");
+                db.insertPunishment(uuid, name, "UNBAN", null, staff(ctx), 0);
+            }
+            case "mute" -> {
+                essentials.mute(uuid, durationMs);
+                audit(ctx, "MUTE", uuid + " minutes=" + body.durationMinutes() + " (bulk)");
+                db.insertPunishment(uuid, name, "MUTE", null, staff(ctx), durationMs);
+            }
+            case "unmute" -> {
+                essentials.unmute(uuid);
+                audit(ctx, "UNMUTE", uuid + " (bulk)");
+                db.insertPunishment(uuid, name, "UNMUTE", null, staff(ctx), 0);
+            }
+            case "mail" -> {
+                if (body.message() == null || body.message().isBlank()) return false;
+                essentials.sendMail(uuid, body.message());
+                audit(ctx, "SEND_MAIL", uuid + " msg=" + body.message() + " (bulk)");
+            }
+            default -> { return false; }
+        }
+        return true;
+    }
+
     // ── helpers ────────────────────────────────────────────────────────────────
 
     private static Map<String, Object> tlEvent(String category, long ts, String label, String detail) {
@@ -521,8 +652,9 @@ public class PlayersController {
     public record GamemodeRequest(String gamemode) {}
     public record BanRequest(String reason, long durationMinutes) {}
     public record ActionRequest(String action) {}
-    public record GiveRequest(String material, int amount) {}
     public record TeleportRequest(String targetUuid) {}
     public record HomeRequest(String name, String world, double x, double y, double z) {}
     public record NoteRequest(String note) {}
+    public record BulkActionRequest(List<String> uuids, String op, BigDecimal amount,
+                                    String reason, long durationMinutes, String message) {}
 }

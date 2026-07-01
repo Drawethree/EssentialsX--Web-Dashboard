@@ -25,6 +25,9 @@ public class DashboardConfig {
     private boolean demoEnabled;
     private String demoUsername;
     private String demoPassword;
+    private int minPasswordLength;
+    private int accountLockoutMaxAttempts;
+    private long accountLockoutWindowMs;
     private boolean allowConsoleCommands;
     private java.util.Set<String> blockedCommands;
     private String webhookUrl;
@@ -52,6 +55,11 @@ public class DashboardConfig {
         demoEnabled = yaml.getBoolean("demo.enabled", false);
         demoUsername = yaml.getString("demo.username", "demo");
         demoPassword = yaml.getString("demo.password", "demo");
+        // Password policy + brute-force lockout. Account lockout complements the per-IP login
+        // limiter: it caps failures against a single username regardless of source IP.
+        minPasswordLength = Math.max(6, yaml.getInt("security.min-password-length", 10));
+        accountLockoutMaxAttempts = Math.max(0, yaml.getInt("security.account-lockout.max-attempts", 10));
+        accountLockoutWindowMs = Math.max(1, yaml.getInt("security.account-lockout.window-minutes", 15)) * 60_000L;
         allowConsoleCommands = yaml.getBoolean("console.allow-commands", true);
         blockedCommands = new java.util.HashSet<>();
         for (String cmd : yaml.getStringList("console.blocked-commands")) {
@@ -98,6 +106,10 @@ public class DashboardConfig {
     public boolean isDemoEnabled() { return demoEnabled; }
     public String getDemoUsername() { return demoUsername; }
     public String getDemoPassword() { return demoPassword; }
+    public int getMinPasswordLength() { return minPasswordLength; }
+    /** 0 disables per-account lockout (per-IP rate limiting still applies). */
+    public int getAccountLockoutMaxAttempts() { return accountLockoutMaxAttempts; }
+    public long getAccountLockoutWindowMs() { return accountLockoutWindowMs; }
     public boolean isAllowConsoleCommands() { return allowConsoleCommands; }
 
     /** True if the given command's first token is on the configured blocklist. */

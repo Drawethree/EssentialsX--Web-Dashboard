@@ -6,9 +6,14 @@
       editable ? 'hover:border-brand cursor-pointer' : 'cursor-default',
       enchanted ? 'border-fuchsia-500/60 shadow-[0_0_6px_-1px_rgba(217,70,239,0.5)]' : 'border-edge',
     ]"
-    :title="title"
-    :disabled="!editable"
+    :aria-label="ariaLabel"
+    :disabled="!editable && !slotData.material"
     @click="editable && $emit('edit', { container, index: slotData.index })"
+    @mouseenter="onEnter"
+    @mousemove="onMove"
+    @mouseleave="onLeave"
+    @focus="onEnter"
+    @blur="onLeave"
   >
     <ItemIcon v-if="slotData.material" :material="slotData.material" :size="28" />
 
@@ -18,7 +23,7 @@
     </span>
 
     <!-- custom-name marker -->
-    <span v-if="slotData.name" class="absolute top-0.5 left-0.5 w-1.5 h-1.5 rounded-full bg-amber-400" title="Custom name"></span>
+    <span v-if="slotData.name" class="absolute top-0.5 left-0.5 w-1.5 h-1.5 rounded-full bg-amber-400"></span>
 
     <!-- durability bar -->
     <span v-if="hasDurability" class="absolute bottom-0 left-0 right-0 h-1 bg-black/40">
@@ -30,13 +35,14 @@
 <script setup>
 import { computed } from 'vue'
 import ItemIcon from './ItemIcon.vue'
+import { stripMcText } from '../mcText'
 
 const props = defineProps({
   slotData: { type: Object, required: true },
   container: { type: String, required: true },
   editable: { type: Boolean, default: false },
 })
-defineEmits(['edit'])
+const emit = defineEmits(['edit', 'hover', 'move', 'leave'])
 
 const s = computed(() => props.slotData)
 const enchanted = computed(() => (s.value.enchantments?.length || 0) > 0)
@@ -47,24 +53,21 @@ const durabilityColor = computed(() => {
   return p > 50 ? 'bg-green-500' : p > 25 ? 'bg-amber-500' : 'bg-red-500'
 })
 
-const title = computed(() => {
+const ariaLabel = computed(() => {
   const d = s.value
   if (!d.material) return `Empty slot ${d.index}`
-  const lines = []
-  lines.push((d.name ? stripCodes(d.name) + ' ' : '') + `(${pretty(d.material)})` + (d.amount > 1 ? ` ×${d.amount}` : ''))
-  if (hasDurability.value) lines.push(`Durability: ${d.durability} / ${d.maxDurability}`)
-  if (d.unbreakable) lines.push('Unbreakable')
-  if (d.enchantments?.length) {
-    lines.push('Enchantments:')
-    d.enchantments.forEach(e => lines.push(`  • ${e.name} ${e.level}`))
-  }
-  if (d.skullOwner) lines.push(`Head of: ${d.skullOwner}`)
-  if (d.customModelData) lines.push(`Custom model data: ${d.customModelData}`)
-  if (d.lore?.length) { lines.push('Lore:'); d.lore.forEach(l => lines.push(`  ${stripCodes(l)}`)) }
-  if (d.flags?.length) lines.push('Flags: ' + d.flags.join(', '))
-  return lines.join('\n')
+  const name = d.name ? stripMcText(d.name) : pretty(d.material)
+  return name + (d.amount > 1 ? ` ×${d.amount}` : '')
 })
 
 function pretty(mat) { return String(mat).replace(/_/g, ' ').toLowerCase() }
-function stripCodes(str) { return String(str).replace(/[§&][0-9a-fk-or]/gi, '') }
+
+function coords(e) {
+  if (e.clientX) return { x: e.clientX, y: e.clientY }
+  const r = e.target?.getBoundingClientRect?.()
+  return r ? { x: r.right, y: r.bottom } : { x: 0, y: 0 }
+}
+function onEnter(e) { if (s.value.material) emit('hover', { item: s.value, ...coords(e) }) }
+function onMove(e) { if (s.value.material) emit('move', coords(e)) }
+function onLeave() { emit('leave') }
 </script>

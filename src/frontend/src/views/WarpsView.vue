@@ -1,11 +1,11 @@
 <template>
   <div class="p-4 sm:p-6 max-w-5xl mx-auto space-y-5">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h1>Warps</h1>
         <p class="text-sm text-muted">Manage server warp points.</p>
       </div>
-      <button v-if="can('WARPS_MANAGE')" class="btn-primary" @click="openNew">New Warp</button>
+      <button v-if="can('WARPS_MANAGE')" class="btn-primary flex-shrink-0" @click="openNew">New Warp</button>
     </div>
 
     <div class="card p-0 overflow-x-auto">

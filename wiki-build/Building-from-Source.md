@@ -6,7 +6,9 @@ one fat jar. The frontend is built automatically during the Maven build via the
 
 ## Prerequisites
 
-- **JDK 17+**
+- **JDK 21** — required to compile against the Paper 1.21.8 API (its class files are Java 21). Don't
+  worry: the build still targets **Java 17 bytecode**, so the plugin runs on Java 17+ servers. Building
+  with an older JDK fails with `class file has wrong version 65.0, should be 61.0`.
 - **Maven 3.8+**
 - Internet access on first build (downloads Paper/EssentialsX APIs, Node v20.11.0 / npm 10.2.4, and npm
   packages)

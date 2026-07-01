@@ -37,7 +37,7 @@ all ships as one `EssDashboard.jar`.
 
 | Tool | Version | Notes |
 |---|---|---|
-| JDK | **17+** (Temurin recommended) | Required to compile and run the plugin |
+| JDK | **21** (Temurin recommended) | Needed to **compile** against the Paper 1.21.8 API (its class files are Java 21). The build targets Java 17 bytecode, so the resulting plugin still **runs** on Java 17+ servers. |
 | Maven | **3.8+** | Build tool |
 | Git | any | Version control |
 | Node.js / npm | *(automatic)* | Maven installs Node `20.11.0` + npm `10.2.4` into `target/node` during the build — you don't need Node installed globally unless you want the frontend dev server |
